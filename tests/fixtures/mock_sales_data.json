@@ -1,0 +1,168 @@
+{
+  "mock_sales_data": {
+    "last_month": {
+      "total_revenue": 85000,
+      "total_orders": 1200,
+      "avg_order_value": 70.83,
+      "revenue_growth": 12.5,
+      "top_products": [
+        {
+          "id": "kerala_burger_001",
+          "name": "Kerala Burger",
+          "revenue": 32000,
+          "units_sold": 107,
+          "growth_rate": 15.2,
+          "avg_price": 299
+        },
+        {
+          "id": "chicken_burger_001", 
+          "name": "Chicken Burger",
+          "revenue": 28000,
+          "units_sold": 93,
+          "growth_rate": 8.5,
+          "avg_price": 301
+        },
+        {
+          "id": "fish_burger_001",
+          "name": "Fish Burger", 
+          "revenue": 18000,
+          "units_sold": 60,
+          "growth_rate": 5.1,
+          "avg_price": 300
+        }
+      ],
+      "daily_breakdown": [
+        {"date": "2025-08-24", "revenue": 2800, "orders": 40},
+        {"date": "2025-08-25", "revenue": 3200, "orders": 45},
+        {"date": "2025-08-26", "revenue": 2900, "orders": 41},
+        {"date": "2025-08-27", "revenue": 3100, "orders": 44},
+        {"date": "2025-08-28", "revenue": 3500, "orders": 49},
+        {"date": "2025-08-29", "revenue": 4200, "orders": 59},
+        {"date": "2025-08-30", "revenue": 4100, "orders": 57}
+      ],
+      "peak_hours": ["12:00-14:00", "19:00-21:00"],
+      "peak_days": ["Friday", "Saturday", "Sunday"]
+    },
+    
+    "forecasts": {
+      "next_30_days": {
+        "total_predicted_revenue": 95000,
+        "confidence_level": 90,
+        "growth_expected": 11.8,
+        "product_forecasts": [
+          {
+            "name": "Kerala Burger",
+            "predicted_revenue": 38000,
+            "predicted_units": 127,
+            "confidence": 92,
+            "inventory_needs": {
+              "burger_buns": 127,
+              "ground_beef_kg": 19.05,
+              "vegetables_kg": 12.7
+            }
+          },
+          {
+            "name": "Chicken Burger",
+            "predicted_revenue": 32000,
+            "predicted_units": 106,
+            "confidence": 88,
+            "inventory_needs": {
+              "burger_buns": 106,
+              "chicken_kg": 15.9,
+              "vegetables_kg": 10.6
+            }
+          }
+        ],
+        "risk_factors": [
+          "Seasonal demand variations",
+          "Competitor activity",
+          "Supply chain disruptions"
+        ],
+        "recommended_actions": [
+          "Increase Kerala Burger marketing",
+          "Secure ground beef supplier",
+          "Plan weekend staff optimization"
+        ]
+      }
+    },
+    
+    "inventory_context": {
+      "high_velocity_items": [
+        {
+          "name": "Ground Beef",
+          "current_stock": "8 kg",
+          "daily_usage": "2.1 kg", 
+          "days_remaining": 3.8,
+          "reorder_priority": "Critical"
+        },
+        {
+          "name": "Burger Buns",
+          "current_stock": "35 pcs",
+          "daily_usage": "12 pcs",
+          "days_remaining": 2.9,
+          "reorder_priority": "Critical"
+        }
+      ],
+      "slow_moving_items": [
+        {
+          "name": "Pickles",
+          "current_stock": "10 kg",
+          "daily_usage": "0.3 kg",
+          "days_remaining": 33.3,
+          "recommendation": "Consider promotional pricing"
+        }
+      ]
+    }
+  },
+  
+  "test_scenarios": {
+    "high_growth_scenario": {
+      "kerala_burger_growth": 25.5,
+      "overall_growth": 18.2,
+      "factors": ["Marketing campaign success", "Positive reviews", "Weekend traffic increase"]
+    },
+    "declining_scenario": {
+      "seafood_combo_decline": -15.8,
+      "overall_impact": -3.2,
+      "factors": ["Seasonal preferences", "Price sensitivity", "Limited promotion"]
+    },
+    "seasonal_patterns": {
+      "summer_boost": {
+        "cold_items": 20,
+        "beverages": 35,
+        "overall": 12
+      },
+      "monsoon_impact": {
+        "delivery_orders": -10,
+        "dine_in": -25,
+        "overall": -8
+      }
+    }
+  },
+  
+  "comparison_data": {
+    "month_over_month": {
+      "current_month": {
+        "revenue": 85000,
+        "orders": 1200,
+        "avg_order_value": 70.83
+      },
+      "previous_month": {
+        "revenue": 76000,
+        "orders": 1100,
+        "avg_order_value": 69.09
+      },
+      "changes": {
+        "revenue_change": 11.84,
+        "order_change": 9.09,
+        "aov_change": 2.52
+      }
+    },
+    "year_over_year": {
+      "current_month": 85000,
+      "same_month_last_year": 68000,
+      "change": 25.0,
+      "factors": ["Menu expansion", "Quality improvements", "Marketing effectiveness"]
+    }
+  }
+}

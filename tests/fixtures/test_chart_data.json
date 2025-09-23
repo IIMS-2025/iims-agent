@@ -1,0 +1,257 @@
+{
+  "line_chart_templates": {
+    "sales_trend": {
+      "type": "line",
+      "title": "Sales Trend Over Time",
+      "xAxis": {
+        "label": "Date",
+        "type": "datetime"
+      },
+      "yAxis": {
+        "label": "Revenue (₹)",
+        "type": "currency"
+      },
+      "sample_data": {
+        "labels": ["2025-09-01", "2025-09-08", "2025-09-15", "2025-09-22"],
+        "datasets": [
+          {
+            "label": "Weekly Revenue",
+            "data": [15000, 18000, 16500, 22000],
+            "borderColor": "#3b82f6",
+            "backgroundColor": "rgba(59, 130, 246, 0.1)",
+            "tension": 0.4
+          }
+        ]
+      }
+    },
+    
+    "forecast_visualization": {
+      "type": "line",
+      "title": "Sales Forecast with Confidence Intervals",
+      "datasets": [
+        {
+          "label": "Historical Sales",
+          "data": [15000, 18000, 16500, 22000],
+          "borderColor": "#10b981",
+          "backgroundColor": "rgba(16, 185, 129, 0.1)",
+          "type": "line"
+        },
+        {
+          "label": "Forecasted Sales",
+          "data": [null, null, null, 22000, 24000, 26000, 25000, 28000],
+          "borderColor": "#f59e0b",
+          "backgroundColor": "rgba(245, 158, 11, 0.1)",
+          "borderDash": [5, 5],
+          "type": "line"
+        },
+        {
+          "label": "Confidence Upper",
+          "data": [null, null, null, 22000, 26400, 28600, 27500, 30800],
+          "borderColor": "rgba(245, 158, 11, 0.3)",
+          "fill": "+1",
+          "type": "line"
+        },
+        {
+          "label": "Confidence Lower", 
+          "data": [null, null, null, 22000, 21600, 23400, 22500, 25200],
+          "borderColor": "rgba(245, 158, 11, 0.3)",
+          "fill": false,
+          "type": "line"
+        }
+      ]
+    }
+  },
+  
+  "bar_chart_templates": {
+    "product_performance": {
+      "type": "bar",
+      "title": "Product Performance by Revenue",
+      "xAxis": {
+        "label": "Products",
+        "type": "category"
+      },
+      "yAxis": {
+        "label": "Revenue (₹)",
+        "type": "currency"
+      },
+      "sample_data": {
+        "labels": ["Kerala Burger", "Chicken Burger", "Fish Burger", "Seafood Combo", "Classic Combo"],
+        "datasets": [
+          {
+            "label": "Revenue",
+            "data": [32000, 28000, 18000, 12000, 8000],
+            "backgroundColor": [
+              "#10b981",
+              "#3b82f6", 
+              "#f59e0b",
+              "#ef4444",
+              "#8b5cf6"
+            ],
+            "borderWidth": 1
+          }
+        ]
+      }
+    },
+    
+    "monthly_comparison": {
+      "type": "bar",
+      "title": "Monthly Revenue Comparison",
+      "sample_data": {
+        "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep"],
+        "datasets": [
+          {
+            "label": "This Year",
+            "data": [65000, 68000, 72000, 75000, 78000, 82000, 85000, 76000, 85000],
+            "backgroundColor": "#10b981"
+          },
+          {
+            "label": "Last Year",
+            "data": [58000, 61000, 63000, 66000, 69000, 71000, 73000, 68000, 68000],
+            "backgroundColor": "#94a3b8"
+          }
+        ]
+      }
+    }
+  },
+  
+  "pie_chart_templates": {
+    "revenue_distribution": {
+      "type": "pie",
+      "title": "Revenue Distribution by Product Category",
+      "sample_data": {
+        "labels": ["Burgers", "Combos", "Beverages", "Sides", "Desserts"],
+        "datasets": [
+          {
+            "data": [58000, 15000, 8000, 3000, 1000],
+            "backgroundColor": [
+              "#10b981",
+              "#3b82f6",
+              "#f59e0b", 
+              "#ef4444",
+              "#8b5cf6"
+            ],
+            "hoverOffset": 4
+          }
+        ]
+      }
+    },
+    
+    "inventory_status": {
+      "type": "doughnut",
+      "title": "Inventory Status Distribution",
+      "sample_data": {
+        "labels": ["In Stock", "Low Stock", "Out of Stock", "Expiring Soon"],
+        "datasets": [
+          {
+            "data": [45, 15, 8, 12],
+            "backgroundColor": [
+              "#10b981",
+              "#f59e0b",
+              "#ef4444", 
+              "#fb923c"
+            ],
+            "cutout": "50%"
+          }
+        ]
+      }
+    }
+  },
+  
+  "dashboard_widgets": {
+    "kpi_cards": [
+      {
+        "title": "Total Revenue",
+        "value": "₹85,000",
+        "change": "+12%",
+        "trend": "up",
+        "period": "vs last month"
+      },
+      {
+        "title": "Orders",
+        "value": "1,200",
+        "change": "+9%", 
+        "trend": "up",
+        "period": "vs last month"
+      },
+      {
+        "title": "Avg Order Value",
+        "value": "₹70.83",
+        "change": "+2.5%",
+        "trend": "up",
+        "period": "vs last month"
+      },
+      {
+        "title": "Top Product",
+        "value": "Kerala Burger",
+        "change": "₹32K revenue",
+        "trend": "neutral",
+        "period": "this month"
+      }
+    ],
+    
+    "quick_insights": [
+      {
+        "type": "success",
+        "icon": "📈",
+        "title": "Revenue Growth",
+        "message": "Monthly revenue increased by 12% with Kerala Burger leading growth"
+      },
+      {
+        "type": "warning", 
+        "icon": "⚠️",
+        "title": "Inventory Alert",
+        "message": "4 high-velocity items need reordering (Ground Beef, Burger Buns)"
+      },
+      {
+        "type": "info",
+        "icon": "💡",
+        "title": "Peak Performance",
+        "message": "Weekend sales consistently 40% higher than weekdays"
+      }
+    ]
+  },
+  
+  "test_data_generators": {
+    "random_sales_day": {
+      "base_revenue": 2800,
+      "variance": 0.3,
+      "weekend_multiplier": 1.4,
+      "hour_distribution": {
+        "08:00": 0.05,
+        "09:00": 0.08,
+        "10:00": 0.12,
+        "11:00": 0.15,
+        "12:00": 0.25,
+        "13:00": 0.22,
+        "14:00": 0.18,
+        "15:00": 0.10,
+        "16:00": 0.08,
+        "17:00": 0.12,
+        "18:00": 0.18,
+        "19:00": 0.25,
+        "20:00": 0.22,
+        "21:00": 0.15,
+        "22:00": 0.05
+      }
+    },
+    
+    "seasonal_multipliers": {
+      "summer": {
+        "beverages": 1.35,
+        "cold_items": 1.2,
+        "overall": 1.12
+      },
+      "monsoon": {
+        "delivery": 0.9,
+        "dine_in": 0.75,
+        "hot_items": 1.1,
+        "overall": 0.92
+      },
+      "festival_season": {
+        "combo_meals": 1.5,
+        "family_packs": 1.8,
+        "overall": 1.25
+      }
+    }
+  }
+}

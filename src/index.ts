@@ -1,0 +1,573 @@
+/**
+ * Main ChatGPT-like Sales Analytics Assistant Server
+ * Integrates with LangGraph flows for sales analysis and forecasting
+ */
+
+import express from "express";
+import multer from "multer";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { v4 as uuidv4 } from "uuid";
+import dotenv from "dotenv";
+import path from "path";
+import { spawn } from "child_process";
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Configure file upload
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only JPEG, PNG, and WebP images allowed"));
+    }
+  },
+});
+
+// Enhanced session store for analytics context
+interface AnalyticsSession {
+  id: string;
+  messages: Array<{
+    role: string;
+    content: string;
+    timestamp: number;
+    metadata?: {
+      intent?: string;
+      toolsUsed?: string[];
+      dataContext?: any;
+    };
+  }>;
+  lastAnalyzedProduct?: {
+    id: string;
+    name: string;
+    type: string;
+    lastMetrics?: any;
+  };
+  lastTimeframe?: string;
+  conversationContext?: {
+    currentAnalysisType?: string;
+    pendingComparisons?: any[];
+    chartPreferences?: any;
+  };
+  createdAt: number;
+  lastUpdated: number;
+}
+
+const sessions = new Map<string, AnalyticsSession>();
+const SESSION_TTL = parseInt(process.env.SESSION_TTL_SECONDS || "3600") * 1000;
+
+// Rate limiting
+const chatRateLimit = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 50, // 50 requests per minute
+  message: {
+    error: "Too many requests, please try again later",
+    retryAfter: 60,
+  },
+});
+
+// Security middleware
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+  })
+);
+
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:3001",
+    credentials: true,
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Session management for analytics context
+function getSession(sessionId: string): AnalyticsSession {
+  const session = sessions.get(sessionId);
+  if (!session || Date.now() - session.lastUpdated > SESSION_TTL) {
+    const newSession: AnalyticsSession = {
+      id: sessionId,
+      messages: [],
+      createdAt: Date.now(),
+      lastUpdated: Date.now(),
+    };
+    sessions.set(sessionId, newSession);
+    return newSession;
+  }
+  return session;
+}
+
+function updateSession(
+  sessionId: string,
+  role: string,
+  content: string,
+  metadata?: any
+) {
+  const session = getSession(sessionId);
+  session.messages.push({
+    role,
+    content,
+    timestamp: Date.now(),
+    metadata,
+  });
+
+  // Keep last 20 messages for better context
+  const maxMessages = parseInt(process.env.MAX_CONVERSATION_HISTORY || "20");
+  session.messages = session.messages.slice(-maxMessages);
+  session.lastUpdated = Date.now();
+
+  // Update session context from metadata
+  if (metadata?.dataContext) {
+    if (metadata.dataContext.lastAnalyzedProduct) {
+      session.lastAnalyzedProduct = metadata.dataContext.lastAnalyzedProduct;
+    }
+    if (metadata.dataContext.lastTimeframe) {
+      session.lastTimeframe = metadata.dataContext.lastTimeframe;
+    }
+  }
+}
+
+// LangGraph integration
+async function callLangGraphFlow(input: any): Promise<any> {
+  return new Promise((resolve, reject) => {
+    try {
+      // For MVP, we'll call the Python LangGraph flow via subprocess
+      // In production, consider using HTTP API or direct Python integration
+
+      const pythonPath = path.join(__dirname, "../venv/bin/python");
+      const scriptPath = path.join(
+        __dirname,
+        "../langgraph/flows/sales_analytics_flow.py"
+      );
+
+      // For now, return mock response since we don't have the full Python integration
+      // This will be replaced with actual LangGraph execution
+
+      const mockResponse = {
+        success: true,
+        response: generateMockResponse(input.message),
+        intent: extractMockIntent(input.message),
+        tool_results: [],
+        session_context: {},
+      };
+
+      resolve(mockResponse);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function generateMockResponse(message: string): string {
+  // Temporary mock responses for development
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes("sales") && lowerMessage.includes("trend")) {
+    return "📈 Sales are trending upward this month! Kerala Burger leads with ₹32,000 revenue (+15% vs last month). Peak sales occur on weekends. Would you like me to forecast next month's performance?";
+  } else if (
+    lowerMessage.includes("forecast") ||
+    lowerMessage.includes("predict")
+  ) {
+    return "🔮 Based on current trends, I predict ₹85,000-95,000 revenue next month (90% confidence). Kerala Burger will likely generate ₹38,000-42,000. You'll need approximately 200 burger buns and 30kg ground beef.";
+  } else if (
+    lowerMessage.includes("perform") &&
+    lowerMessage.includes("best")
+  ) {
+    return "🏆 Top Performers: 1) Kerala Burger (₹32k, +15%), 2) Chicken Burger (₹28k, +8%), 3) Fish Burger (₹18k, +5%). Kerala Burger shows strongest momentum with consistent weekend peaks.";
+  } else if (lowerMessage.includes("compare") || lowerMessage.includes("vs")) {
+    return "📊 Month-over-month comparison: Revenue up 12% (₹85k vs ₹76k). Menu items grew 18%, costs increased 8%. Net profit margin improved from 22% to 25%. Kerala Burger drove most growth (+₹8k).";
+  } else if (
+    lowerMessage.includes("stock") ||
+    lowerMessage.includes("inventory")
+  ) {
+    return "📦 Current inventory status: 4 items low on stock (Burger Buns, Ground Beef, Cheddar Cheese, Onions). 2 items expiring soon (Lettuce, Tomatoes). Consider reordering high-velocity items first.";
+  } else if (
+    lowerMessage.includes("help") ||
+    lowerMessage.includes("what can you")
+  ) {
+    return "💡 I can help you with:\n📊 Sales trend analysis\n🔮 Sales forecasting\n🏆 Product performance rankings\n📈 Period comparisons\n📦 Inventory insights\n📊 Chart generation\n\nTry asking: 'Show me sales trends' or 'Which products sell best?'";
+  }
+
+  return "I can help you analyze sales data and forecast trends for Kochi Burger Junction. What would you like to explore? Try asking about sales trends, product performance, or forecasting.";
+}
+
+function extractMockIntent(message: string): string {
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes("trend")) return "analyze_sales_trends";
+  if (lowerMessage.includes("forecast") || lowerMessage.includes("predict"))
+    return "forecast_sales";
+  if (lowerMessage.includes("perform") || lowerMessage.includes("best"))
+    return "analyze_product_performance";
+  if (lowerMessage.includes("compare") || lowerMessage.includes("vs"))
+    return "compare_periods";
+  if (lowerMessage.includes("stock") || lowerMessage.includes("inventory"))
+    return "view_inventory_status";
+  if (lowerMessage.includes("help")) return "help";
+
+  return "general_query";
+}
+
+// Main chat endpoint with streaming support
+app.post("/chat", chatRateLimit, upload.single("image"), async (req, res) => {
+  try {
+    const { message, session_id = uuidv4(), stream = false } = req.body;
+    const imageFile = req.file;
+
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({
+        error: "Message is required and must be a string",
+      });
+    }
+
+    // Get session context
+    const session = getSession(session_id);
+
+    // Prepare input for LangGraph flow
+    const flowInput = {
+      message,
+      session_id,
+      image: imageFile?.path,
+      context: {
+        conversationHistory: session.messages.slice(-10),
+        lastAnalyzedProduct: session.lastAnalyzedProduct,
+        lastTimeframe: session.lastTimeframe,
+        conversationContext: session.conversationContext,
+      },
+    };
+
+    if (stream && process.env.ENABLE_STREAMING === "true") {
+      // Set up streaming response
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
+      try {
+        // Execute LangGraph flow
+        const flowResult = await callLangGraphFlow(flowInput);
+
+        if (flowResult.success) {
+          // Stream response chunks
+          const response = flowResult.response;
+          const words = response.split(" ");
+
+          for (let i = 0; i < words.length; i++) {
+            const chunk = words.slice(0, i + 1).join(" ");
+            res.write(
+              `data: ${JSON.stringify({
+                chunk: chunk,
+                done: false,
+                progress: (i + 1) / words.length,
+              })}\n\n`
+            );
+
+            // Simulate typing delay
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+
+          // Send completion
+          res.write(
+            `data: ${JSON.stringify({
+              done: true,
+              session_id,
+              metadata: {
+                intent: flowResult.intent,
+                toolsUsed:
+                  flowResult.tool_results?.map((tr: any) => tr.tool) || [],
+              },
+            })}\n\n`
+          );
+
+          // Update session
+          updateSession(session_id, "user", message);
+          updateSession(session_id, "assistant", flowResult.response, {
+            intent: flowResult.intent,
+            toolsUsed: flowResult.tool_results?.map((tr: any) => tr.tool) || [],
+            dataContext: flowResult.session_context,
+          });
+        } else {
+          res.write(
+            `data: ${JSON.stringify({
+              error: true,
+              message: flowResult.response,
+              done: true,
+            })}\n\n`
+          );
+        }
+
+        res.end();
+        return;
+      } catch (error) {
+        res.write(
+          `data: ${JSON.stringify({
+            error: true,
+            message: "Stream processing failed",
+            done: true,
+          })}\n\n`
+        );
+        res.end();
+        return;
+      }
+    } else {
+      // Regular JSON response
+      const flowResult = await callLangGraphFlow(flowInput);
+
+      // Update session with metadata
+      updateSession(session_id, "user", message);
+      updateSession(session_id, "assistant", flowResult.response, {
+        intent: flowResult.intent,
+        toolsUsed: flowResult.tool_results?.map((tr: any) => tr.tool) || [],
+        dataContext: flowResult.session_context,
+      });
+
+      res.json({
+        message: flowResult.response,
+        session_id,
+        metadata: {
+          intent: flowResult.intent,
+          toolsUsed: flowResult.tool_results?.map((tr: any) => tr.tool) || [],
+          hasChartData: flowResult.tool_results?.some(
+            (tr: any) => tr.tool === "generate_chart_data"
+          ),
+          processingTime: Date.now() - Date.now(), // Will be calculated properly
+        },
+      });
+      return;
+    }
+  } catch (error) {
+    console.error("Chat error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: "Please try again later",
+    });
+    return;
+  }
+});
+
+// Get conversation history
+app.get("/chat/:session_id/history", (req, res) => {
+  try {
+    const session = sessions.get(req.params.session_id);
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    res.json({
+      session_id: req.params.session_id,
+      messages: session.messages,
+      context: {
+        lastAnalyzedProduct: session.lastAnalyzedProduct,
+        conversationContext: session.conversationContext,
+        lastTimeframe: session.lastTimeframe,
+      },
+      metadata: {
+        messageCount: session.messages.length,
+        sessionAge: Date.now() - session.createdAt,
+        lastActivity: Date.now() - session.lastUpdated,
+      },
+    });
+    return;
+  } catch (error) {
+    console.error("History retrieval error:", error);
+    res.status(500).json({ error: "Failed to retrieve conversation history" });
+    return;
+  }
+});
+
+// Clear session
+app.delete("/chat/:session_id", (req, res) => {
+  try {
+    const sessionId = req.params.session_id;
+    const deleted = sessions.delete(sessionId);
+
+    res.json({
+      success: deleted,
+      message: deleted ? "Session cleared successfully" : "Session not found",
+    });
+  } catch (error) {
+    console.error("Session deletion error:", error);
+    res.status(500).json({ error: "Failed to clear session" });
+  }
+});
+
+// Health check with detailed status
+app.get("/health", (req, res) => {
+  const now = Date.now();
+  const activeSessions = Array.from(sessions.values()).filter(
+    (session) => now - session.lastUpdated < SESSION_TTL
+  ).length;
+
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    server: {
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      activeSessions,
+      totalSessions: sessions.size,
+    },
+    environment: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      streamingEnabled: process.env.ENABLE_STREAMING === "true",
+    },
+    features: {
+      langraph: "enabled",
+      openai: !!process.env.OPENAI_API_KEY,
+      streaming: process.env.ENABLE_STREAMING === "true",
+      redis: !!process.env.REDIS_URL,
+    },
+  });
+});
+
+// Analytics endpoint for debugging
+app.get("/analytics/sessions", (req, res) => {
+  if (process.env.NODE_ENV !== "development") {
+    return res.status(403).json({ error: "Only available in development" });
+  }
+
+  const sessionSummary = Array.from(sessions.entries()).map(
+    ([id, session]) => ({
+      id: id.substring(0, 8) + "...",
+      messageCount: session.messages.length,
+      lastActivity: new Date(session.lastUpdated).toISOString(),
+      lastAnalyzedProduct: session.lastAnalyzedProduct?.name,
+      age: Date.now() - session.createdAt,
+    })
+  );
+
+  res.json({
+    totalSessions: sessions.size,
+    activeSessions: sessionSummary.filter((s) => s.age < SESSION_TTL).length,
+    sessions: sessionSummary,
+  });
+  return;
+});
+
+// Cleanup expired sessions
+setInterval(() => {
+  const now = Date.now();
+  let cleanedCount = 0;
+
+  for (const [sessionId, session] of sessions.entries()) {
+    if (now - session.lastUpdated > SESSION_TTL) {
+      sessions.delete(sessionId);
+      cleanedCount++;
+    }
+  }
+
+  if (cleanedCount > 0) {
+    console.log(`🧹 Cleaned up ${cleanedCount} expired sessions`);
+  }
+}, 5 * 60 * 1000); // Every 5 minutes
+
+// Error handling middleware
+app.use(
+  (
+    error: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    console.error("Unhandled error:", error);
+
+    if (error instanceof multer.MulterError) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(400)
+          .json({ error: "File too large. Maximum size is 10MB." });
+      }
+      return res
+        .status(400)
+        .json({ error: "File upload error: " + error.message });
+    }
+
+    res.status(500).json({
+      error: "Internal server error",
+      message:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Please try again later",
+    });
+    return;
+  }
+);
+
+// 404 handler
+app.use("*", (req, res) => {
+  res.status(404).json({
+    error: "Endpoint not found",
+    availableEndpoints: [
+      "POST /chat - Main chat interface",
+      "GET /chat/:session_id/history - Get conversation history",
+      "DELETE /chat/:session_id - Clear session",
+      "GET /health - Health check",
+      "GET /analytics/sessions - Session analytics (dev only)",
+    ],
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Sales Analytics Assistant Server running on port ${PORT}`);
+  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`💬 Chat endpoint: http://localhost:${PORT}/chat`);
+  console.log(`🔧 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(
+    `⚡ Streaming: ${
+      process.env.ENABLE_STREAMING === "true" ? "enabled" : "disabled"
+    }`
+  );
+
+  if (!process.env.OPENAI_API_KEY) {
+    console.warn("⚠️  OPENAI_API_KEY not set - AI responses will not work");
+  }
+
+  if (!process.env.BASE_URL) {
+    console.warn("⚠️  BASE_URL not set - inventory API calls will fail");
+  }
+
+  console.log("🎯 Ready for sales analytics conversations!");
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("🛑 SIGTERM received, shutting down gracefully");
+
+  // Clear all sessions
+  sessions.clear();
+
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("🛑 SIGINT received, shutting down gracefully");
+
+  // Clear all sessions
+  sessions.clear();
+
+  process.exit(0);
+});
+
+export default app;

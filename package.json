@@ -1,0 +1,62 @@
+{
+  "name": "iims-sales-analytics-agent",
+  "version": "1.0.0",
+  "description": "ChatGPT-like conversational AI assistant for sales analytics and forecasting",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "sales",
+    "analytics",
+    "chatbot",
+    "langgraph",
+    "openai"
+  ],
+  "author": "IIMS Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "@types/express": "^4.17.17",
+    "multer": "^1.4.5-lts.1",
+    "@types/multer": "^1.4.7",
+    "cors": "^2.8.5",
+    "@types/cors": "^2.8.13",
+    "openai": "^4.20.1",
+    "dotenv": "^16.3.1",
+    "typescript": "^5.2.2",
+    "ts-node": "^10.9.1",
+    "@langchain/langgraph": "^0.0.20",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.3.2",
+    "chart.js": "^4.4.0",
+    "date-fns": "^2.30.0",
+    "uuid": "^9.0.1",
+    "@types/uuid": "^9.0.7",
+    "axios": "^1.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.8",
+    "ts-jest": "^29.1.1",
+    "eslint": "^8.55.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "directories": {
+    "test": "tests"
+  }
+}

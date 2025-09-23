@@ -1,0 +1,147 @@
+{
+  "sales_analytics_conversations": [
+    {
+      "scenario": "Sales Trend Analysis",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Show me sales trends for last month"
+        },
+        {
+          "role": "assistant",
+          "content": "📈 Great news! Sales are trending upward this month with ₹85,000 total revenue (+12% vs last month). Kerala Burger leads with ₹32,000 revenue. Peak sales occur on weekends. Would you like me to forecast next month's performance?",
+          "metadata": {
+            "intent": "analyze_sales_trends",
+            "toolsUsed": ["analyze_sales_data"],
+            "dataContext": {
+              "total_revenue": 85000,
+              "growth_rate": 12,
+              "top_product": "Kerala Burger"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "Product Performance Ranking",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Which menu items are our best sellers?"
+        },
+        {
+          "role": "assistant",
+          "content": "🏆 Top Performers this month: 1) Kerala Burger (₹32k, +15%), 2) Chicken Burger (₹28k, +8%), 3) Fish Burger (₹18k, +5%). 📉 Underperformers: Seafood Combo (₹3k), Classic Combo (₹5k). Kerala-style items consistently outperform classic variants.",
+          "metadata": {
+            "intent": "analyze_product_performance",
+            "toolsUsed": ["analyze_sales_data"]
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "Sales Forecasting",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Predict Kerala Burger sales for next month"
+        },
+        {
+          "role": "assistant",
+          "content": "🔮 Based on current trends, I predict Kerala Burger will generate ₹38,000-42,000 next month (90% confidence). This represents a 15-20% increase from current month. You'll need approximately 200 burger buns and 30kg ground beef to meet demand.",
+          "metadata": {
+            "intent": "forecast_sales",
+            "toolsUsed": ["forecast_sales"],
+            "dataContext": {
+              "product_name": "Kerala Burger",
+              "forecast_range": [38000, 42000],
+              "confidence": 90
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "Period Comparison",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Compare this month vs last month revenue"
+        },
+        {
+          "role": "assistant",
+          "content": "📊 Month-over-month comparison: Revenue up 12% (₹85,000 vs ₹76,000). Menu items grew 18%, raw material costs increased 8%. Net profit margin improved from 22% to 25%. Kerala Burger drove most growth (+₹8,000).",
+          "metadata": {
+            "intent": "compare_periods",
+            "toolsUsed": ["compare_periods"]
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "Follow-up Context",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Show me Kerala Burger performance"
+        },
+        {
+          "role": "assistant",
+          "content": "📈 Kerala Burger: ₹32,000 revenue this month, 107 units sold (+15% vs last month). Peak sales on weekends (Fri-Sun). Current stock sufficient for 2 weeks. Strong growth momentum continues!",
+          "metadata": {
+            "intent": "analyze_product_performance",
+            "toolsUsed": ["get_product_sales_velocity"],
+            "dataContext": {
+              "lastAnalyzedProduct": {
+                "name": "Kerala Burger",
+                "id": "product_123",
+                "revenue": 32000
+              }
+            }
+          }
+        },
+        {
+          "role": "user",
+          "content": "What about next month's forecast for that?"
+        },
+        {
+          "role": "assistant",
+          "content": "🔮 Kerala Burger forecast for next month: ₹38,000-42,000 revenue (120-140 units, 90% confidence). Growth momentum continues with 15-20% increase expected. Inventory needs: 140 buns, 21kg ground beef, 14kg vegetables.",
+          "metadata": {
+            "intent": "forecast_sales",
+            "toolsUsed": ["forecast_sales"],
+            "usedContext": "lastAnalyzedProduct"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "Inventory Analysis",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What inventory should I prioritize based on sales?"
+        },
+        {
+          "role": "assistant",
+          "content": "💡 Priority inventory based on sales analysis: 1) Ground beef (current: 8kg, high velocity, need 25kg), 2) Burger buns (low stock, 200pcs needed), 3) Tomatoes (expiring soon, consider promotions). Chicken stock sufficient for 2 weeks.",
+          "metadata": {
+            "intent": "view_inventory_status",
+            "toolsUsed": ["get_inventory_status", "analyze_sales_data"]
+          }
+        }
+      ]
+    }
+  ],
+  "test_expectations": {
+    "response_time_ms": 2000,
+    "max_response_length": 400,
+    "required_emojis": ["📈", "📉", "🔮", "🏆", "💡", "📊"],
+    "required_metrics": ["revenue", "growth", "percentage", "quantity"],
+    "session_features": [
+      "conversation_history",
+      "context_tracking",
+      "follow_up_support"
+    ]
+  }
+}

@@ -1,0 +1,172 @@
+# Analytics Configuration for Sales Analytics Assistant
+# Defines behavior, thresholds, and settings for the LangGraph flows
+
+# Intent Classification Settings
+intent_classification:
+  confidence_threshold: 0.7
+  fallback_threshold: 0.5
+  use_openai: true
+  fallback_to_rules: true
+  
+  # Intent priorities (higher = more specific, preferred for ambiguous cases)
+  intent_priorities:
+    analyze_sales_trends: 8
+    forecast_sales: 8
+    analyze_product_performance: 7
+    compare_periods: 7
+    view_specific_metrics: 6
+    view_inventory_status: 5
+    generate_report: 4
+    create_chart: 4
+    update_stock_single: 3
+    help: 2
+    clarify: 1
+    fallback: 0
+
+# Slot Filling Configuration
+slot_filling:
+  completeness_threshold: 0.8  # 80% of required slots must be filled
+  auto_fill_from_context: true
+  context_resolution_patterns:
+    - "that product"
+    - "it"
+    - "same item"
+    - "for that"
+    - "same period"
+    - "that timeframe"
+
+# Tool Execution Settings
+tool_execution:
+  timeout_seconds: 30
+  retry_attempts: 2
+  parallel_execution: true
+  cache_results: false  # No caching for MVP
+  
+  # Tool priorities for parallel execution
+  tool_priorities:
+    analyze_sales_data: 10
+    forecast_sales: 9
+    get_inventory_status: 8
+    analyze_product_performance: 7
+    compare_periods: 6
+    generate_chart_data: 5
+    create_dashboard_summary: 4
+    update_stock: 3
+
+# Response Generation Settings
+response_generation:
+  max_length_words: 400
+  temperature: 0.7
+  include_emojis: true
+  emoji_frequency: "sparse"  # sparse, moderate, frequent
+  
+  # Response format preferences
+  format_preferences:
+    currency_symbol: "₹"
+    percentage_precision: 1
+    number_formatting: "comma_separated"
+    date_format: "ISO"
+  
+  # Required response elements
+  response_requirements:
+    include_metrics: true
+    include_insights: true
+    include_recommendations: true
+    include_follow_up_suggestions: false  # Optional for MVP
+
+# Session Management
+session_management:
+  max_messages: 20
+  ttl_seconds: 3600
+  context_retention:
+    last_analyzed_product: true
+    last_timeframe: true
+    conversation_patterns: true
+    analysis_results: true
+  
+  # Context cleaning rules
+  cleanup_rules:
+    remove_old_metrics: true
+    compress_long_conversations: false  # Keep full for MVP
+    archive_completed_sessions: false
+
+# Analytics Behavior
+analytics_behavior:
+  # Default time periods when not specified
+  default_time_period: "last_month"
+  default_forecast_days: 30
+  default_top_n: 10
+  
+  # Data presentation
+  always_include_growth_rates: true
+  highlight_kerala_items: true  # Business-specific preference
+  show_inventory_implications: true
+  
+  # Forecasting settings
+  forecasting:
+    confidence_levels: [85, 90, 95]
+    default_confidence: 90
+    include_inventory_planning: true
+    seasonal_adjustments: true
+  
+  # Performance analysis
+  performance_analysis:
+    rank_by_default: "revenue"
+    show_underperformers: true
+    growth_threshold_high: 10.0  # %
+    growth_threshold_low: -5.0   # %
+
+# Error Handling
+error_handling:
+  max_retries: 3
+  retry_delay_seconds: 1
+  graceful_degradation: true
+  
+  # Error response templates
+  error_templates:
+    api_unavailable: "I'm having trouble connecting to the data system. Please try again in a moment."
+    timeout: "The analysis is taking longer than expected. Would you like me to try a simpler query?"
+    validation_error: "I need some additional information to complete this analysis."
+    unknown_error: "Something went wrong. Please try rephrasing your question."
+
+# Business Rules (Kochi Burger Junction specific)
+business_rules:
+  # Product categories
+  categories:
+    menu_items: ["menu_item"]
+    raw_materials: ["raw_material"] 
+    sub_products: ["sub_product"]
+  
+  # Kerala-specific preferences
+  regional_preferences:
+    highlight_kerala_products: true
+    use_local_currency: true
+    weekend_boost_factor: 1.25
+    peak_hours: ["12:00-14:00", "19:00-21:00"]
+  
+  # Stock status thresholds
+  stock_thresholds:
+    low_stock_warning: 0.2  # 20% of reorder point
+    critical_stock: 0.1     # 10% of reorder point
+    dead_stock_days: 30     # No activity for 30 days
+  
+  # Sales velocity categories
+  velocity_categories:
+    high: "> 20 units/day"
+    medium: "5-20 units/day" 
+    low: "< 5 units/day"
+
+# Development Settings
+development:
+  use_mock_data: true  # Enable mock responses when backend unavailable
+  log_tool_calls: true
+  validate_responses: true
+  show_debug_info: false
+  
+# Production Settings
+production:
+  use_mock_data: false
+  log_tool_calls: false
+  validate_responses: false
+  enable_caching: true
+  connection_pooling: true
