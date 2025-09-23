@@ -127,7 +127,7 @@ def extract_slots_with_llm(
     - time_period: Period for chart data
     - product_filter: Product/category filter
     
-    For update_stock_single:
+# For update_stock_single:  # Removed - analytics should be read-only
     - product_name: Product to update
     - qty: Quantity (extract numbers)
     - unit: kg, pcs, ml, etc.
@@ -144,9 +144,9 @@ def extract_slots_with_llm(
         "time_period": "extracted_value_or_null",
         "product_name": "extracted_value_or_null", 
         "metric": "extracted_value_or_null",
-        "forecast_days": extracted_number_or_null,
+        "forecast_days": "extracted_number_or_null",
         "chart_type": "extracted_value_or_null",
-        "qty": extracted_number_or_null,
+        "qty": "extracted_number_or_null",
         "unit": "extracted_value_or_null",
         "other_params": {{}}
     }}
@@ -215,16 +215,10 @@ def extract_slots_fallback(
         if intent == "forecast_sales" and any(word in message_lower for word in ["day", "week", "month"]):
             if first_number in [7, 30, 90]:
                 slots["forecast_days"] = first_number
-        elif intent == "update_stock_single":
-            slots["qty"] = float(first_number)
+# elif intent == "update_stock_single":  # Removed - analytics should be read-only
+# slots["qty"] = float(first_number)  # Removed - analytics should be read-only
             
-    # Unit extraction for stock updates
-    if intent == "update_stock_single":
-        units = ["kg", "pcs", "ml", "liters", "pieces"]
-        for unit in units:
-            if unit in message_lower:
-                slots["unit"] = unit
-                break
+    # Unit extraction for stock updates - REMOVED (analytics should be read-only)
                 
     # Chart type extraction
     if intent == "create_chart":
@@ -292,7 +286,7 @@ def calculate_slot_completeness(slots: Dict[str, Any], intent: str) -> float:
         "analyze_product_performance": ["metric"],
         "compare_periods": ["current_period", "comparison_period"],
         "create_chart": ["chart_type", "data_source"],
-        "update_stock_single": ["product_name", "qty", "unit"],
+# "update_stock_single": ["product_name", "qty", "unit"],  # Removed - analytics should be read-only
         "generate_report": [],
         "view_specific_metrics": ["product_name", "metric_type"],
         "help": [],

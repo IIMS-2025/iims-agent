@@ -231,7 +231,7 @@ def get_clarification_suggestions(
                 "options": ["All menu items", "Kerala Burger", "Chicken Burger", "Specific product"]
             }
             
-    elif intent == "update_stock_single":
+# elif intent == "update_stock_single":  # Removed - analytics should be read-only
         missing_params = []
         if "product_name" not in partial_slots:
             missing_params.append("product name")

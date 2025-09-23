@@ -151,82 +151,91 @@ function updateSession(
 async function callLangGraphFlow(input: any): Promise<any> {
   return new Promise((resolve, reject) => {
     try {
-      // For MVP, we'll call the Python LangGraph flow via subprocess
-      // In production, consider using HTTP API or direct Python integration
-
+      // Call the Python LangGraph runner
       const pythonPath = path.join(__dirname, "../venv/bin/python");
-      const scriptPath = path.join(
-        __dirname,
-        "../langgraph/flows/sales_analytics_flow.py"
-      );
+      const scriptPath = path.join(__dirname, "../langgraph/runner.py");
 
-      // For now, return mock response since we don't have the full Python integration
-      // This will be replaced with actual LangGraph execution
+      const inputData = JSON.stringify({
+        message: input.message,
+        session_id: input.session_id,
+        context: input.context,
+      });
 
-      const mockResponse = {
-        success: true,
-        response: generateMockResponse(input.message),
-        intent: extractMockIntent(input.message),
+      const { spawn } = require("child_process");
+      const pythonProcess = spawn(pythonPath, [scriptPath], {
+        stdio: ["pipe", "pipe", "pipe"],
+        cwd: path.join(__dirname, ".."),
+      });
+
+      let output = "";
+      let errorOutput = "";
+
+      pythonProcess.stdin.write(inputData);
+      pythonProcess.stdin.end();
+
+      pythonProcess.stdout.on("data", (data: Buffer) => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on("data", (data: Buffer) => {
+        errorOutput += data.toString();
+      });
+
+      pythonProcess.on("close", (code: number) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(output);
+            resolve(result);
+          } catch (parseError) {
+            console.error("Failed to parse Python output:", output);
+            resolve({
+              success: false,
+              response:
+                "I encountered an error processing your request. Please ensure the backend API is running.",
+              intent: "error",
+              tool_results: [],
+              session_context: {},
+            });
+          }
+        } else {
+          console.error("Python process failed:", errorOutput);
+          resolve({
+            success: false,
+            response:
+              "I'm unable to connect to the backend server. Please ensure the inventory API is running on port 8000.",
+            intent: "error",
+            tool_results: [],
+            session_context: {},
+          });
+        }
+      });
+
+      pythonProcess.on("error", (error: Error) => {
+        console.error("Failed to start Python process:", error);
+        resolve({
+          success: false,
+          response:
+            "I'm experiencing technical difficulties. Please try again later.",
+          intent: "error",
+          tool_results: [],
+          session_context: {},
+        });
+      });
+    } catch (error) {
+      console.error("Error in callLangGraphFlow:", error);
+      resolve({
+        success: false,
+        response:
+          "I'm experiencing technical difficulties. Please try again later.",
+        intent: "error",
         tool_results: [],
         session_context: {},
-      };
-
-      resolve(mockResponse);
-    } catch (error) {
-      reject(error);
+      });
     }
   });
 }
 
-function generateMockResponse(message: string): string {
-  // Temporary mock responses for development
-  const lowerMessage = message.toLowerCase();
-
-  if (lowerMessage.includes("sales") && lowerMessage.includes("trend")) {
-    return "📈 Sales are trending upward this month! Kerala Burger leads with ₹32,000 revenue (+15% vs last month). Peak sales occur on weekends. Would you like me to forecast next month's performance?";
-  } else if (
-    lowerMessage.includes("forecast") ||
-    lowerMessage.includes("predict")
-  ) {
-    return "🔮 Based on current trends, I predict ₹85,000-95,000 revenue next month (90% confidence). Kerala Burger will likely generate ₹38,000-42,000. You'll need approximately 200 burger buns and 30kg ground beef.";
-  } else if (
-    lowerMessage.includes("perform") &&
-    lowerMessage.includes("best")
-  ) {
-    return "🏆 Top Performers: 1) Kerala Burger (₹32k, +15%), 2) Chicken Burger (₹28k, +8%), 3) Fish Burger (₹18k, +5%). Kerala Burger shows strongest momentum with consistent weekend peaks.";
-  } else if (lowerMessage.includes("compare") || lowerMessage.includes("vs")) {
-    return "📊 Month-over-month comparison: Revenue up 12% (₹85k vs ₹76k). Menu items grew 18%, costs increased 8%. Net profit margin improved from 22% to 25%. Kerala Burger drove most growth (+₹8k).";
-  } else if (
-    lowerMessage.includes("stock") ||
-    lowerMessage.includes("inventory")
-  ) {
-    return "📦 Current inventory status: 4 items low on stock (Burger Buns, Ground Beef, Cheddar Cheese, Onions). 2 items expiring soon (Lettuce, Tomatoes). Consider reordering high-velocity items first.";
-  } else if (
-    lowerMessage.includes("help") ||
-    lowerMessage.includes("what can you")
-  ) {
-    return "💡 I can help you with:\n📊 Sales trend analysis\n🔮 Sales forecasting\n🏆 Product performance rankings\n📈 Period comparisons\n📦 Inventory insights\n📊 Chart generation\n\nTry asking: 'Show me sales trends' or 'Which products sell best?'";
-  }
-
-  return "I can help you analyze sales data and forecast trends for Kochi Burger Junction. What would you like to explore? Try asking about sales trends, product performance, or forecasting.";
-}
-
-function extractMockIntent(message: string): string {
-  const lowerMessage = message.toLowerCase();
-
-  if (lowerMessage.includes("trend")) return "analyze_sales_trends";
-  if (lowerMessage.includes("forecast") || lowerMessage.includes("predict"))
-    return "forecast_sales";
-  if (lowerMessage.includes("perform") || lowerMessage.includes("best"))
-    return "analyze_product_performance";
-  if (lowerMessage.includes("compare") || lowerMessage.includes("vs"))
-    return "compare_periods";
-  if (lowerMessage.includes("stock") || lowerMessage.includes("inventory"))
-    return "view_inventory_status";
-  if (lowerMessage.includes("help")) return "help";
-
-  return "general_query";
-}
+// Mock functions removed - now using real LangGraph integration
 
 // Main chat endpoint with streaming support
 app.post("/chat", chatRateLimit, upload.single("image"), async (req, res) => {

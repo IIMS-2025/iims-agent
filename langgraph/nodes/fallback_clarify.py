@@ -178,7 +178,7 @@ def generate_clarification_questions(
             questions.append("Which metric should I compare?")
             quick_replies.extend(["Revenue", "Sales volume", "Profit margin", "All metrics"])
             
-    elif intent == "update_stock_single":
+# elif intent == "update_stock_single":  # Removed - analytics should be read-only
         missing = []
         if "product_name" not in partial_slots:
             missing.append("product name")

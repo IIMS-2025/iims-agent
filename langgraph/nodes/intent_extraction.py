@@ -71,7 +71,7 @@ def extract_intent_from_message(
     8. create_chart - Requests for charts, graphs, or visual data
        Examples: "Show me a chart", "Graph the data", "Visualize trends"
        
-    9. update_stock_single - Basic inventory management operations
+# 9. update_stock_single - REMOVED: Analytics should not modify data
        Examples: "Add 20 kg tomatoes", "Update stock", "Increase inventory"
        
     10. help - General help or capability questions
@@ -117,7 +117,7 @@ def extract_intent_from_message(
             supported_intents = [
                 "analyze_sales_trends", "forecast_sales", "view_inventory_status",
                 "analyze_product_performance", "compare_periods", "view_specific_metrics",
-                "generate_report", "create_chart", "update_stock_single", 
+                "generate_report", "create_chart", 
                 "help", "clarify", "fallback"
             ]
             
@@ -198,7 +198,7 @@ def classify_intent_fallback(user_message: str) -> Dict[str, Any]:
         }
     elif any(word in message_lower for word in ["add", "update", "increase", "adjust"]) and any(word in message_lower for word in ["kg", "pcs", "ml", "stock"]):
         return {
-            "intent": "update_stock_single",
+# Removed update_stock_single - analytics should be read-only
             "confidence": 0.7,
             "reasoning": "Contains stock update keywords with quantities",
             "method": "rule_based"

@@ -13,6 +13,18 @@ import json
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 X_TENANT_ID = os.getenv("X_TENANT_ID", "11111111-1111-1111-1111-111111111111")
 
+def check_backend_health() -> Dict[str, Any]:
+    """Check if the backend API is available using the health endpoint from contract.md"""
+    try:
+        response = requests.get(f"{BASE_URL}/api/v1/healthz", timeout=5)
+        if response.status_code == 200:
+            return {"available": True, "status": response.json()}
+        else:
+            return {"available": False, "status_code": response.status_code}
+    except Exception as e:
+        return {"available": False, "error": str(e)}
+
+
 def make_api_call(endpoint: str, method: str = "GET", data: Optional[Dict] = None) -> Dict[str, Any]:
     """Helper function to make API calls with proper headers"""
     url = f"{BASE_URL}{endpoint}"
@@ -62,64 +74,28 @@ def analyze_sales_data(
         Sales data with trends, totals, and insights
     """
     
-    # For MVP, we'll simulate sales analytics using inventory data
-    # In production, this would query actual sales/transaction tables
+    # Use inventory data from contract.md endpoints to simulate sales analytics
+    # Real sales analytics would use dedicated sales endpoints (not in current contract)
     
     try:
-        # Get inventory data as proxy for sales analysis
+        # Call the actual inventory endpoint from contract.md
         inventory_data = make_api_call("/api/v1/inventory")
         
         if inventory_data.get("error"):
-            return inventory_data
+            # Backend not available - throw error
+            return {
+                "error": True,
+                "message": f"Unable to connect to backend server: {inventory_data.get('message')}",
+                "endpoint": "/api/v1/inventory",
+                "suggestion": "Please ensure the inventory backend API is running on port 8000"
+            }
             
-        # Simulate sales analytics based on inventory levels and activity
-        inventory_items = inventory_data.get("inventory_items", [])
-        
-        # Calculate mock sales metrics
-        total_revenue = 0
-        product_sales = []
-        
-        for item in inventory_items:
-            # Simulate sales data based on inventory activity and pricing
-            has_activity = item.get("has_recent_activity", False)
-            price = float(item.get("price", 0))
-            available_qty = float(item.get("available_qty", 0))
-            
-            if has_activity and item.get("type") == "menu_item":
-                # Simulate sales for menu items
-                estimated_sold = max(10, int(available_qty * 0.3))  # Mock sold quantity
-                revenue = estimated_sold * price
-                total_revenue += revenue
-                
-                product_sales.append({
-                    "product_id": item.get("id"),
-                    "product_name": item.get("name"),
-                    "revenue": revenue,
-                    "quantity_sold": estimated_sold,
-                    "price": price,
-                    "category": item.get("category"),
-                    "growth_rate": 15.2 if "Kerala" in item.get("name", "") else 8.5
-                })
-        
-        # Sort by revenue
-        product_sales.sort(key=lambda x: x["revenue"], reverse=True)
-        
+        # Sales analytics requires dedicated sales endpoints which are not available in contract.md
         return {
-            "success": True,
-            "time_period": time_period,
-            "total_revenue": total_revenue,
-            "total_items_sold": sum(p["quantity_sold"] for p in product_sales),
-            "product_performance": product_sales[:10],  # Top 10
-            "summary": {
-                "top_performer": product_sales[0] if product_sales else None,
-                "revenue_growth": 12.5,  # Mock growth rate
-                "avg_order_value": total_revenue / max(1, len(product_sales))
-            },
-            "insights": [
-                "Weekend sales show 25% higher performance",
-                "Kerala-style items outperform classic variants",
-                "Lunch hours (12-2 PM) are peak sales periods"
-            ]
+            "error": True,
+            "message": "Unable to connect to backend server - sales analytics requires dedicated sales endpoints",
+            "endpoint": "No sales analytics endpoints available in contract.md",
+            "suggestion": "Please ensure the inventory backend API is running on port 8000 and includes sales/analytics endpoints"
         }
         
     except Exception as e:
@@ -146,9 +122,19 @@ def get_product_sales_velocity(product_name: str) -> Dict[str, Any]:
         inventory_data = make_api_call("/api/v1/inventory")
         
         if inventory_data.get("error"):
-            return inventory_data
+            return {
+                "error": True,
+                "message": f"Unable to connect to backend server: {inventory_data.get('message')}",
+                "endpoint": "/api/v1/inventory",
+                "suggestion": "Please ensure the inventory backend API is running on port 8000"
+            }
             
-        inventory_items = inventory_data.get("inventory_items", [])
+        # Backend returns: {"data": [{"inventory_items": [...], "summary": {...}}]}
+        data_wrapper = inventory_data.get("data", [])
+        if data_wrapper and len(data_wrapper) > 0:
+            inventory_items = data_wrapper[0].get("inventory_items", [])
+        else:
+            inventory_items = []
         
         # Find matching products
         matching_products = [
@@ -163,26 +149,12 @@ def get_product_sales_velocity(product_name: str) -> Dict[str, Any]:
                 "suggestions": [item.get("name") for item in inventory_items[:5]]
             }
             
-        product = matching_products[0]  # Take first match
-        
-        # Simulate sales velocity metrics
+        # Sales velocity analysis requires dedicated sales endpoints which are not available in contract.md
         return {
-            "success": True,
-            "product_id": product.get("id"),
-            "product_name": product.get("name"),
-            "current_stock": product.get("available_qty"),
-            "stock_status": product.get("stock_status"),
-            "sales_velocity": {
-                "daily_avg_sales": 12.5,  # Mock data
-                "weekly_trend": "+8%",
-                "monthly_total": 375,
-                "days_of_stock_remaining": 15
-            },
-            "performance_metrics": {
-                "revenue_contribution": "18%",
-                "profit_margin": "35%",
-                "customer_rating": 4.2
-            }
+            "error": True,
+            "message": "Unable to connect to backend server - sales velocity analysis requires dedicated sales endpoints",
+            "endpoint": "No sales analytics endpoints available in contract.md", 
+            "suggestion": "Please ensure the inventory backend API is running on port 8000 and includes sales/analytics endpoints"
         }
         
     except Exception as e:

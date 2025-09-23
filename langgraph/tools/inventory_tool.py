@@ -65,13 +65,25 @@ def get_inventory_status(
             inventory_data = make_api_call("/api/v1/inventory")
             
         if inventory_data.get("error"):
-            return inventory_data
+            return {
+                "error": True,
+                "message": f"Unable to connect to backend server: {inventory_data.get('message')}",
+                "endpoint": "/api/v1/inventory",
+                "suggestion": "Please ensure the inventory backend API is running on port 8000"
+            }
             
         # Extract inventory items
         if product_id:
             inventory_items = inventory_data.get("data", [])
         else:
-            inventory_items = inventory_data.get("inventory_items", [])
+            # Backend returns: {"data": [{"inventory_items": [...], "summary": {...}}]}
+            data_wrapper = inventory_data.get("data", [])
+            if data_wrapper and len(data_wrapper) > 0:
+                inventory_items = data_wrapper[0].get("inventory_items", [])
+                summary = data_wrapper[0].get("summary", {})
+            else:
+                inventory_items = []
+                summary = {}
             
         # Apply status filter if specified
         if filter_status:
@@ -124,8 +136,8 @@ def get_inventory_status(
                 
             enhanced_items.append(enhanced_item)
             
-        # Create summary
-        summary = inventory_data.get("summary", {})
+        # Use summary from extracted data (already defined above)
+        # summary is already extracted from data_wrapper[0] above
         if include_sales_context:
             summary["sales_insights"] = {
                 "high_velocity_items": len([i for i in enhanced_items if i.get("sales_context", {}).get("sales_velocity") == "High"]),
@@ -167,9 +179,19 @@ def check_stock_alerts(
         inventory_data = make_api_call("/api/v1/inventory")
         
         if inventory_data.get("error"):
-            return inventory_data
+            return {
+                "error": True,
+                "message": f"Unable to connect to backend server: {inventory_data.get('message')}",
+                "endpoint": "/api/v1/inventory",
+                "suggestion": "Please ensure the inventory backend API is running on port 8000"
+            }
             
-        inventory_items = inventory_data.get("inventory_items", [])
+        # Backend returns: {"data": [{"inventory_items": [...], "summary": {...}}]}
+        data_wrapper = inventory_data.get("data", [])
+        if data_wrapper and len(data_wrapper) > 0:
+            inventory_items = data_wrapper[0].get("inventory_items", [])
+        else:
+            inventory_items = []
         
         alerts = []
         

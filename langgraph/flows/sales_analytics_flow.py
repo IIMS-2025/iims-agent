@@ -7,7 +7,7 @@ import os
 from typing import Dict, Any, List, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langgraph import StateGraph, END
+from langgraph.graph import StateGraph, END
 from langgraph.graph import START
 from langgraph.checkpoint.memory import MemorySaver
 import json
@@ -18,6 +18,7 @@ from ..tools.forecasting_tool import forecast_sales, analyze_seasonal_trends
 from ..tools.inventory_tool import get_inventory_status, check_stock_alerts
 from ..tools.comparison_tool import compare_periods, analyze_growth_drivers
 from ..tools.chart_data_tool import generate_chart_data, create_dashboard_summary
+from ..tools.backend_health_tool import check_backend_status, get_available_endpoints
 
 # Define the state for our graph
 class AnalyticsState(dict):
@@ -77,13 +78,13 @@ def extract_intent_and_slots(state: AnalyticsState) -> AnalyticsState:
     - comparison_period: Period to compare against
     
     Return JSON format:
-    {
+    {{
         "intent": "extracted_intent",
         "confidence": 0.95,
-        "slots": {
+        "slots": {{
             "parameter_name": "extracted_value"
-        }
-    }
+        }}
+    }}
     """
     
     try:
@@ -115,7 +116,7 @@ def extract_intent_and_slots(state: AnalyticsState) -> AnalyticsState:
         state["extracted_slots"] = {"error": str(e)}
         return state
 
-def route_to_tools(state: AnalyticsState) -> AnalyticsState:
+async def route_to_tools(state: AnalyticsState) -> AnalyticsState:
     """
     Route to appropriate tools based on extracted intent
     """
@@ -127,71 +128,71 @@ def route_to_tools(state: AnalyticsState) -> AnalyticsState:
     try:
         if intent == "analyze_sales_trends":
             # Call sales analytics tool
-            result = analyze_sales_data(
-                time_period=slots.get("time_period", "last_month"),
-                product_id=slots.get("product_id"),
-                category=slots.get("category"),
-                group_by=slots.get("group_by", "day")
-            )
+            result = await analyze_sales_data.ainvoke({
+                "time_period": slots.get("time_period", "last_month"),
+                "product_id": slots.get("product_id"),
+                "category": slots.get("category"),
+                "group_by": slots.get("group_by", "day")
+            })
             tool_results.append({"tool": "analyze_sales_data", "result": result})
             
         elif intent == "forecast_sales":
             # Call forecasting tool
-            result = forecast_sales(
-                product_id=slots.get("product_id"),
-                product_name=slots.get("product_name"),
-                category=slots.get("category"),
-                forecast_days=slots.get("forecast_days", 30)
-            )
+            result = await forecast_sales.ainvoke({
+                "product_id": slots.get("product_id"),
+                "product_name": slots.get("product_name"),
+                "category": slots.get("category"),
+                "forecast_days": slots.get("forecast_days", 30)
+            })
             tool_results.append({"tool": "forecast_sales", "result": result})
             
         elif intent == "view_inventory_status":
             # Call inventory tool
-            result = get_inventory_status(
-                filter_status=slots.get("filter_status"),
-                product_id=slots.get("product_id"),
-                include_sales_context=True
-            )
+            result = await get_inventory_status.ainvoke({
+                "filter_status": slots.get("filter_status"),
+                "product_id": slots.get("product_id"),
+                "include_sales_context": True
+            })
             tool_results.append({"tool": "get_inventory_status", "result": result})
             
         elif intent == "analyze_product_performance":
             # Get product sales velocity
             if slots.get("product_name"):
-                result = get_product_sales_velocity(slots["product_name"])
+                result = await get_product_sales_velocity.ainvoke({"product_name": slots["product_name"]})
                 tool_results.append({"tool": "get_product_sales_velocity", "result": result})
             else:
                 # Get general sales analysis
-                result = analyze_sales_data(
-                    time_period=slots.get("time_period", "last_month"),
-                    category=slots.get("category")
-                )
+                result = await analyze_sales_data.ainvoke({
+                    "time_period": slots.get("time_period", "last_month"),
+                    "category": slots.get("category")
+                })
                 tool_results.append({"tool": "analyze_sales_data", "result": result})
                 
         elif intent == "compare_periods":
             # Call comparison tool
-            result = compare_periods(
-                current_period=slots.get("current_period", "this_month"),
-                comparison_period=slots.get("comparison_period", "last_month"),
-                metric=slots.get("metric", "revenue"),
-                product_id=slots.get("product_id")
-            )
+            result = await compare_periods.ainvoke({
+                "current_period": slots.get("current_period", "this_month"),
+                "comparison_period": slots.get("comparison_period", "last_month"),
+                "metric": slots.get("metric", "revenue"),
+                "product_id": slots.get("product_id")
+            })
             tool_results.append({"tool": "compare_periods", "result": result})
             
         elif intent == "create_chart":
             # Call chart data tool
-            result = generate_chart_data(
-                chart_type=slots.get("chart_type", "line"),
-                data_source=slots.get("data_source", "sales"),
-                time_period=slots.get("time_period", "last_month"),
-                product_filter=slots.get("product_filter")
-            )
+            result = await generate_chart_data.ainvoke({
+                "chart_type": slots.get("chart_type", "line"),
+                "data_source": slots.get("data_source", "sales"),
+                "time_period": slots.get("time_period", "last_month"),
+                "product_filter": slots.get("product_filter")
+            })
             tool_results.append({"tool": "generate_chart_data", "result": result})
             
         elif intent == "generate_report":
             # Create comprehensive dashboard
-            result = create_dashboard_summary(
-                time_period=slots.get("time_period", "this_month")
-            )
+            result = await create_dashboard_summary.ainvoke({
+                "time_period": slots.get("time_period", "this_month")
+            })
             tool_results.append({"tool": "create_dashboard_summary", "result": result})
             
         elif intent == "help":
@@ -223,7 +224,7 @@ def route_to_tools(state: AnalyticsState) -> AnalyticsState:
             
         else:
             # Fallback - try to get general inventory status
-            result = get_inventory_status(include_sales_context=True)
+            result = await get_inventory_status.ainvoke({"include_sales_context": True})
             tool_results.append({"tool": "get_inventory_status", "result": result})
             
         state["tool_results"] = tool_results
