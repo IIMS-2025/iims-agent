@@ -59,7 +59,7 @@ def get_inventory_status(
     
     try:
         # Get inventory data
-        if product_id:
+        if product_id and product_id not in ["", "N/A", None]:
             inventory_data = make_api_call(f"/api/v1/inventory/{product_id}")
         else:
             inventory_data = make_api_call("/api/v1/inventory")
@@ -75,18 +75,14 @@ def get_inventory_status(
         # Extract inventory items
         if product_id:
             inventory_items = inventory_data.get("data", [])
+            summary = {}  # Initialize empty summary for single product queries
         else:
-            # Backend returns: {"data": [{"inventory_items": [...], "summary": {...}}]}
-            data_wrapper = inventory_data.get("data", [])
-            if data_wrapper and len(data_wrapper) > 0:
-                inventory_items = data_wrapper[0].get("inventory_items", [])
-                summary = data_wrapper[0].get("summary", {})
-            else:
-                inventory_items = []
-                summary = {}
+            # Backend returns: {"summary": {...}, "ingredient_items": [...]}
+            inventory_items = inventory_data.get("ingredient_items", [])
+            summary = inventory_data.get("summary", {})
             
-        # Apply status filter if specified
-        if filter_status:
+        # Apply status filter if specified (but not for "all" or "N/A")
+        if filter_status and filter_status not in ["all", "N/A", "", None]:
             inventory_items = [
                 item for item in inventory_items 
                 if item.get("stock_status") == filter_status
@@ -136,9 +132,8 @@ def get_inventory_status(
                 
             enhanced_items.append(enhanced_item)
             
-        # Use summary from extracted data (already defined above)
-        # summary is already extracted from data_wrapper[0] above
-        if include_sales_context:
+        # Add sales insights to summary if not present
+        if include_sales_context and "sales_insights" not in summary:
             summary["sales_insights"] = {
                 "high_velocity_items": len([i for i in enhanced_items if i.get("sales_context", {}).get("sales_velocity") == "High"]),
                 "reorder_priorities": len([i for i in enhanced_items if i.get("sales_context", {}).get("reorder_priority") == "High"]),
@@ -186,12 +181,8 @@ def check_stock_alerts(
                 "suggestion": "Please ensure the inventory backend API is running on port 8000"
             }
             
-        # Backend returns: {"data": [{"inventory_items": [...], "summary": {...}}]}
-        data_wrapper = inventory_data.get("data", [])
-        if data_wrapper and len(data_wrapper) > 0:
-            inventory_items = data_wrapper[0].get("inventory_items", [])
-        else:
-            inventory_items = []
+        # Backend returns: {"summary": {...}, "ingredient_items": [...]}
+        inventory_items = inventory_data.get("ingredient_items", [])
         
         alerts = []
         
