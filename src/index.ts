@@ -158,6 +158,7 @@ async function callLangGraphFlow(input: any): Promise<any> {
       const inputData = JSON.stringify({
         message: input.message,
         session_id: input.session_id,
+        method: input.method, // Add method parameter for ReAct/Intent selection
         context: input.context,
       });
 
@@ -185,6 +186,8 @@ async function callLangGraphFlow(input: any): Promise<any> {
         if (code === 0) {
           try {
             const result = JSON.parse(output);
+            // Debug logging to see what we get from Python
+            console.log("Python result:", JSON.stringify(result, null, 2));
             resolve(result);
           } catch (parseError) {
             console.error("Failed to parse Python output:", output);
@@ -240,7 +243,12 @@ async function callLangGraphFlow(input: any): Promise<any> {
 // Main chat endpoint with streaming support
 app.post("/chat", chatRateLimit, upload.single("image"), async (req, res) => {
   try {
-    const { message, session_id = uuidv4(), stream = false } = req.body;
+    const {
+      message,
+      session_id = uuidv4(),
+      stream = false,
+      method = "auto",
+    } = req.body;
     const imageFile = req.file;
 
     if (!message || typeof message !== "string") {
@@ -256,6 +264,7 @@ app.post("/chat", chatRateLimit, upload.single("image"), async (req, res) => {
     const flowInput = {
       message,
       session_id,
+      method, // Add method parameter for ReAct/Intent/Auto selection
       image: imageFile?.path,
       context: {
         conversationHistory: session.messages.slice(-10),
@@ -295,18 +304,32 @@ app.post("/chat", chatRateLimit, upload.single("image"), async (req, res) => {
             await new Promise((resolve) => setTimeout(resolve, 50));
           }
 
-          // Send completion
-          res.write(
-            `data: ${JSON.stringify({
-              done: true,
-              session_id,
-              metadata: {
-                intent: flowResult.intent,
-                toolsUsed:
-                  flowResult.tool_results?.map((tr: any) => tr.tool) || [],
-              },
-            })}\n\n`
-          );
+          // Send completion with ReAct support
+          const completionData: any = {
+            done: true,
+            session_id,
+            metadata: {
+              intent: flowResult.intent,
+              toolsUsed:
+                flowResult.tool_results?.map((tr: any) => tr.tool) || [],
+            },
+          };
+
+          // Add ReAct-specific fields if present
+          if (flowResult.method) {
+            completionData.method = flowResult.method;
+          }
+          if (flowResult.reasoning_trace) {
+            completionData.reasoning_trace = flowResult.reasoning_trace;
+          }
+          if (flowResult.iterations) {
+            completionData.iterations = flowResult.iterations;
+          }
+          if (flowResult.tools_used) {
+            completionData.tools_used = flowResult.tools_used;
+          }
+
+          res.write(`data: ${JSON.stringify(completionData)}\n\n`);
 
           // Update session
           updateSession(session_id, "user", message);
@@ -350,7 +373,8 @@ app.post("/chat", chatRateLimit, upload.single("image"), async (req, res) => {
         dataContext: flowResult.session_context,
       });
 
-      res.json({
+      // Build response object with ReAct support
+      const response: any = {
         message: flowResult.response,
         session_id,
         metadata: {
@@ -361,7 +385,23 @@ app.post("/chat", chatRateLimit, upload.single("image"), async (req, res) => {
           ),
           processingTime: Date.now() - Date.now(), // Will be calculated properly
         },
-      });
+      };
+
+      // Add ReAct-specific fields if present
+      if (flowResult.method) {
+        response.method = flowResult.method;
+      }
+      if (flowResult.reasoning_trace) {
+        response.reasoning_trace = flowResult.reasoning_trace;
+      }
+      if (flowResult.iterations) {
+        response.iterations = flowResult.iterations;
+      }
+      if (flowResult.tools_used) {
+        response.tools_used = flowResult.tools_used;
+      }
+
+      res.json(response);
       return;
     }
   } catch (error) {
