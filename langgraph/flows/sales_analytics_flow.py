@@ -13,11 +13,12 @@ from langgraph.checkpoint.memory import MemorySaver
 import json
 
 # Import tools
-from ..tools.sales_analytics_tool import analyze_sales_data, get_product_sales_velocity
-from ..tools.forecasting_tool import forecast_sales, analyze_seasonal_trends
-from ..tools.inventory_tool import get_inventory_status, check_stock_alerts
-from ..tools.comparison_tool import compare_periods, analyze_growth_drivers
-from ..tools.chart_data_tool import generate_chart_data, create_dashboard_summary
+from ..tools.sales_analytics_tool import get_total_sales
+from ..tools.forecasting_tool import forecast_sales, forecast_inventory_needs
+from ..tools.inventory_tool import get_inventory_status, check_stock_alerts, get_inventory_analytics
+from ..tools.comparison_tool import compare_inventory_performance, compare_menu_items
+from ..tools.chart_data_tool import generate_inventory_chart_data, generate_sales_chart_data
+from ..tools.report_generation_tool import generate_comprehensive_business_report
 from ..tools.backend_health_tool import check_backend_status, get_available_endpoints
 
 # Define the state for our graph
@@ -128,13 +129,11 @@ async def route_to_tools(state: AnalyticsState) -> AnalyticsState:
     try:
         if intent == "analyze_sales_trends":
             # Call sales analytics tool
-            result = await analyze_sales_data.ainvoke({
-                "time_period": slots.get("time_period", "last_month"),
-                "product_id": slots.get("product_id"),
-                "category": slots.get("category"),
-                "group_by": slots.get("group_by", "day")
+            result = await get_total_sales.ainvoke({
+                "date_range": slots.get("time_period", "last_30_days"),
+                "include_forecasting": True
             })
-            tool_results.append({"tool": "analyze_sales_data", "result": result})
+            tool_results.append({"tool": "get_total_sales", "result": result})
             
         elif intent == "forecast_sales":
             # Call forecasting tool
@@ -156,44 +155,49 @@ async def route_to_tools(state: AnalyticsState) -> AnalyticsState:
             tool_results.append({"tool": "get_inventory_status", "result": result})
             
         elif intent == "analyze_product_performance":
-            # Get product sales velocity
-            if slots.get("product_name"):
-                result = await get_product_sales_velocity.ainvoke({"product_name": slots["product_name"]})
-                tool_results.append({"tool": "get_product_sales_velocity", "result": result})
-            else:
-                # Get general sales analysis
-                result = await analyze_sales_data.ainvoke({
-                    "time_period": slots.get("time_period", "last_month"),
-                    "category": slots.get("category")
-                })
-                tool_results.append({"tool": "analyze_sales_data", "result": result})
+            # Get product performance analysis
+            result = await get_total_sales.ainvoke({
+                "date_range": slots.get("time_period", "last_30_days"),
+                "include_forecasting": True
+            })
+            tool_results.append({"tool": "get_total_sales", "result": result})
                 
         elif intent == "compare_periods":
             # Call comparison tool
-            result = await compare_periods.ainvoke({
-                "current_period": slots.get("current_period", "this_month"),
-                "comparison_period": slots.get("comparison_period", "last_month"),
+            result = await compare_inventory_performance.ainvoke({
+                "current_period": slots.get("current_period", "current_month"),
+                "comparison_period": slots.get("comparison_period", "previous_month"),
                 "metric": slots.get("metric", "revenue"),
-                "product_id": slots.get("product_id")
+                "category": slots.get("category")
             })
-            tool_results.append({"tool": "compare_periods", "result": result})
+            tool_results.append({"tool": "compare_inventory_performance", "result": result})
             
         elif intent == "create_chart":
             # Call chart data tool
-            result = await generate_chart_data.ainvoke({
-                "chart_type": slots.get("chart_type", "line"),
-                "data_source": slots.get("data_source", "sales"),
-                "time_period": slots.get("time_period", "last_month"),
-                "product_filter": slots.get("product_filter")
-            })
-            tool_results.append({"tool": "generate_chart_data", "result": result})
+            data_source = slots.get("data_source", "sales")
+            if data_source == "inventory":
+                result = await generate_inventory_chart_data.ainvoke({
+                    "chart_type": slots.get("chart_type", "bar"),
+                    "category_filter": slots.get("product_filter"),
+                    "time_period": slots.get("time_period", "current")
+                })
+                tool_results.append({"tool": "generate_inventory_chart_data", "result": result})
+            else:
+                result = await generate_sales_chart_data.ainvoke({
+                    "chart_type": slots.get("chart_type", "line"),
+                    "time_period": slots.get("time_period", "last_month"),
+                    "product_filter": slots.get("product_filter")
+                })
+                tool_results.append({"tool": "generate_sales_chart_data", "result": result})
             
         elif intent == "generate_report":
-            # Create comprehensive dashboard
-            result = await create_dashboard_summary.ainvoke({
-                "time_period": slots.get("time_period", "this_month")
+            # Create comprehensive business report
+            result = await generate_comprehensive_business_report.ainvoke({
+                "report_type": slots.get("report_type", "executive_summary"),
+                "include_forecasts": True,
+                "include_recommendations": True
             })
-            tool_results.append({"tool": "create_dashboard_summary", "result": result})
+            tool_results.append({"tool": "generate_comprehensive_business_report", "result": result})
             
         elif intent == "help":
             # No tools needed, direct response

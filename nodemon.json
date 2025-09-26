@@ -1,0 +1,19 @@
+{
+  "watch": ["src/**/*", "langgraph/**/*"],
+  "ext": "ts,js,py",
+  "ignore": [
+    "dist/**/*",
+    "node_modules/**/*",
+    "venv/**/*",
+    "__pycache__/**/*",
+    "*.pyc",
+    "uploads/**/*",
+    "*.log"
+  ],
+  "exec": "ts-node src/index.ts",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 1000,
+  "verbose": true
+}

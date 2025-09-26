@@ -18,10 +18,8 @@ sys.path.append(str(project_root))
 from dotenv import load_dotenv
 load_dotenv()
 
-# Import the LangGraph flows
-from langgraph.flows.sales_analytics_flow import process_user_message
-from langgraph.flows.react_analytics_flow import process_user_message_react  
-from langgraph.flows.hybrid_analytics_flow import process_user_message_hybrid
+# Import the LangGraph flows - ReAct only for now
+from langgraph.flows.react_analytics_flow import process_user_message_react
 
 async def main():
     """Main function to process user input and return response"""
@@ -45,32 +43,13 @@ async def main():
         # Extract method preference (intent, react, auto)
         method = input_data.get("method", "auto")
         
-        # Process through appropriate LangGraph flow
-        if method == "react":
-            result = await process_user_message_react(
-                message=message,
-                session_id=session_id,
-                conversation_history=conversation_history,
-                session_context=session_context
-            )
-        elif method == "intent":
-            result = await process_user_message(
-                message=message,
-                session_id=session_id,
-                conversation_history=conversation_history,
-                session_context=session_context
-            )
-            # Add method indicator
-            result["method"] = "intent"
-        else:
-            # Use hybrid approach with auto-selection
-            result = await process_user_message_hybrid(
-                message=message,
-                session_id=session_id,
-                conversation_history=conversation_history,
-                session_context=session_context,
-                method=method
-            )
+        # Process through ReAct flow only
+        result = await process_user_message_react(
+            message=message,
+            session_id=session_id,
+            conversation_history=conversation_history,
+            session_context=session_context
+        )
         
         # Return result as JSON
         print(json.dumps(result, indent=2))

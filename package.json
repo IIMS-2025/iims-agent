@@ -4,9 +4,14 @@
   "description": "ChatGPT-like conversational AI assistant for sales analytics and forecasting",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "dev:full": "concurrently \"npm run dev\" \"npm run watch:python\"",
+    "dev:simple": "concurrently \"npm run dev\" \"npm run watch:python:simple\"",
+    "watch:python": "node scripts/python-watcher.js",
+    "watch:python:simple": "node scripts/python-watcher-simple.js",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:prod": "npm run build && npm run start",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
@@ -50,7 +55,9 @@
     "eslint": "^8.55.0",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
     "@typescript-eslint/parser": "^6.13.1",
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "concurrently": "^8.2.2",
+    "chokidar": "^3.5.3"
   },
   "engines": {
     "node": ">=18.0.0",

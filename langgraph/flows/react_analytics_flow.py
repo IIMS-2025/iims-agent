@@ -14,18 +14,23 @@ from langgraph.checkpoint.memory import MemorySaver
 from datetime import datetime
 
 # Import all available tools - LLM will choose intelligently
-from ..tools.sales_analytics_tool import analyze_sales_data, get_product_sales_velocity
-from ..tools.forecasting_tool import forecast_sales, analyze_seasonal_trends
-from ..tools.inventory_tool import get_inventory_status, check_stock_alerts
-from ..tools.comparison_tool import compare_periods, analyze_growth_drivers
+from ..tools.sales_analytics_tool import get_total_sales
+from ..tools.forecasting_tool import forecast_sales, forecast_inventory_needs
+from ..tools.inventory_tool import get_inventory_status, check_stock_alerts, get_inventory_analytics, get_inventory_overview, analyze_inventory_movements
+from ..tools.comparison_tool import compare_inventory_performance, compare_menu_items
 from ..tools.product_performance_tool import analyze_product_performance
-from ..tools.chart_data_tool import generate_chart_data, create_dashboard_summary
-from ..tools.report_generation_tool import generate_sales_report
+from ..tools.chart_data_tool import generate_inventory_chart_data, generate_sales_chart_data, generate_menu_performance_chart_data
+from ..tools.report_generation_tool import generate_comprehensive_business_report, generate_inventory_status_report
 from ..tools.backend_health_tool import check_backend_status, get_available_endpoints
-from ..tools.cookbook_analysis_tool import get_all_cookbook_items, get_recipe_details, analyze_menu_profitability
-from ..tools.wastage_analysis_tool import get_wastage_summary, analyze_wastage_by_product, track_wastage_trends
+from ..tools.cookbook_analysis_tool import get_all_cookbook_items, get_recipe_details, analyze_menu_profitability, analyze_dish_cost_breakdown, get_menu_performance_analytics, calculate_recipe_costs_from_inventory
+from ..tools.wastage_analysis_tool import get_wastage_summary, analyze_wastage_by_product, track_wastage_trends, get_wastage_trends, get_top_wastage_products, get_wastage_by_date
 from ..tools.tenancy_management_tool import get_tenant_information, analyze_product_catalog, get_location_overview
 from ..tools.batch_tracking_tool import get_batch_history, analyze_inventory_by_product, get_expiry_alerts
+from ..tools.order_management_tool import analyze_order_patterns, estimate_daily_orders, track_menu_item_demand
+from ..tools.endpoint_discovery_tool import discover_available_endpoints, verify_endpoint_data_quality
+from ..tools.cross_dataset_analysis_framework import analyze_cross_dataset_correlations, generate_unified_business_intelligence
+from ..tools.data_quality_validation_tool import validate_all_data_sources, monitor_data_quality_trends
+from ..tools.stock_update_tool import get_product_details
 
 # ReAct State Definition
 class ReActState(dict):
@@ -62,27 +67,37 @@ AVAILABLE_TOOLS = {
     # Inventory Management
     "get_inventory_status": get_inventory_status,
     "check_stock_alerts": check_stock_alerts,
+    "get_inventory_analytics": get_inventory_analytics,
+    "get_inventory_overview": get_inventory_overview,
+    "analyze_inventory_movements": analyze_inventory_movements,
     "analyze_inventory_by_product": analyze_inventory_by_product,
     "get_expiry_alerts": get_expiry_alerts,
     
-    # Sales Analytics (Note: these return errors as no sales endpoints exist)
-    "analyze_sales_data": analyze_sales_data,
-    "get_product_sales_velocity": get_product_sales_velocity,
+    # Sales Analytics
+    "get_total_sales": get_total_sales,
     "forecast_sales": forecast_sales,
-    "analyze_seasonal_trends": analyze_seasonal_trends,
-    "compare_periods": compare_periods,
-    "analyze_growth_drivers": analyze_growth_drivers,
+    "forecast_inventory_needs": forecast_inventory_needs,
     "analyze_product_performance": analyze_product_performance,
+    
+    # Comparison Tools
+    "compare_inventory_performance": compare_inventory_performance,
+    "compare_menu_items": compare_menu_items,
     
     # Cookbook & Recipe Management
     "get_all_cookbook_items": get_all_cookbook_items,
     "get_recipe_details": get_recipe_details,
     "analyze_menu_profitability": analyze_menu_profitability,
+    "analyze_dish_cost_breakdown": analyze_dish_cost_breakdown,
+    "get_menu_performance_analytics": get_menu_performance_analytics,
+    "calculate_recipe_costs_from_inventory": calculate_recipe_costs_from_inventory,
     
     # Wastage Analysis
     "get_wastage_summary": get_wastage_summary,
     "analyze_wastage_by_product": analyze_wastage_by_product,
     "track_wastage_trends": track_wastage_trends,
+    "get_wastage_trends": get_wastage_trends,
+    "get_top_wastage_products": get_top_wastage_products,
+    "get_wastage_by_date": get_wastage_by_date,
     
     # Tenancy & Product Catalog
     "get_tenant_information": get_tenant_information,
@@ -92,13 +107,30 @@ AVAILABLE_TOOLS = {
     # Batch Tracking & Traceability
     "get_batch_history": get_batch_history,
     
-    # Charts & Reports
-    "generate_chart_data": generate_chart_data,
-    "create_dashboard_summary": create_dashboard_summary,
+    # Order Management
+    "analyze_order_patterns": analyze_order_patterns,
+    "estimate_daily_orders": estimate_daily_orders,
+    "track_menu_item_demand": track_menu_item_demand,
     
-    # System Health
+    # Charts & Reports
+    "generate_inventory_chart_data": generate_inventory_chart_data,
+    "generate_sales_chart_data": generate_sales_chart_data,
+    "generate_menu_performance_chart_data": generate_menu_performance_chart_data,
+    "generate_comprehensive_business_report": generate_comprehensive_business_report,
+    "generate_inventory_status_report": generate_inventory_status_report,
+    
+    # Advanced Analytics
+    "analyze_cross_dataset_correlations": analyze_cross_dataset_correlations,
+    "generate_unified_business_intelligence": generate_unified_business_intelligence,
+    "validate_all_data_sources": validate_all_data_sources,
+    "monitor_data_quality_trends": monitor_data_quality_trends,
+    
+    # System Health & Discovery
     "check_backend_status": check_backend_status,
-    "get_available_endpoints": get_available_endpoints
+    "get_available_endpoints": get_available_endpoints,
+    "discover_available_endpoints": discover_available_endpoints,
+    "verify_endpoint_data_quality": verify_endpoint_data_quality,
+    "get_product_details": get_product_details
 }
 
 # Comprehensive tool documentation for LLM to make intelligent choices
@@ -1223,29 +1255,29 @@ def create_react_analytics_graph():
     workflow = StateGraph(ReActState)
     
     # Add nodes
-    workflow.add_node("initialize", initialize_react_state)
-    workflow.add_node("reasoning", react_reasoning_step)
-    workflow.add_node("action", react_action_step)
-    workflow.add_node("final_response", generate_final_response)
-    workflow.add_node("update_context", update_react_session_context)
+    workflow.add_node("initialize_state", initialize_react_state)
+    workflow.add_node("reasoning_step", react_reasoning_step)
+    workflow.add_node("action_step", react_action_step)
+    workflow.add_node("response_generation", generate_final_response)
+    workflow.add_node("context_update", update_react_session_context)
     
     # Add edges
-    workflow.add_edge(START, "initialize")
-    workflow.add_edge("initialize", "reasoning")
-    workflow.add_edge("reasoning", "action")
+    workflow.add_edge(START, "initialize_state")
+    workflow.add_edge("initialize_state", "reasoning_step")
+    workflow.add_edge("reasoning_step", "action_step")
     
     # Conditional edge: continue reasoning or finalize
     workflow.add_conditional_edges(
-        "action",
+        "action_step",
         should_continue_reasoning,
         {
-            "reasoning": "reasoning",
-            "final_response": "final_response"
+            "reasoning": "reasoning_step",
+            "final_response": "response_generation"
         }
     )
     
-    workflow.add_edge("final_response", "update_context")
-    workflow.add_edge("update_context", END)
+    workflow.add_edge("response_generation", "context_update")
+    workflow.add_edge("context_update", END)
     
     # Compile the graph
     memory = MemorySaver()

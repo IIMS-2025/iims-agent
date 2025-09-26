@@ -1,31 +1,64 @@
-# LangGraph and LangChain dependencies
-langgraph>=0.0.20
-langchain>=0.1.0
-langchain-core>=0.1.0
-langchain-openai>=0.0.5
+# 🚀 IIMS Agent Requirements - Latest Python Optimized
+# Designed for Python 3.11+ for maximum package support
 
-# HTTP and API dependencies
-requests>=2.31.0
-httpx>=0.25.0
+# ============================================================================
+# LangGraph Dependencies (Primary Framework)
+# ============================================================================
+langgraph>=0.2.30,<0.3.0          # Main LangGraph framework
+langchain-core>=0.2.38,<0.3.0     # Required by LangGraph
+langchain-openai>=0.1.0,<0.2.0    # OpenAI integration for LangGraph
 
-# Data processing
-pandas>=2.1.0
-numpy>=1.24.0
-python-dateutil>=2.8.2
+# ============================================================================
+# Core AI/ML Dependencies
+# ============================================================================
+openai>=1.40.0,<2.0.0             # Latest OpenAI API client
+tiktoken>=0.7.0                    # Token counting for OpenAI models
+langsmith>=0.1.63                  # LangSmith integration
 
-# Environment and configuration
-python-dotenv>=1.0.0
-pydantic>=2.5.0
+# ============================================================================
+# HTTP and API Dependencies
+# ============================================================================
+requests>=2.31.0                   # HTTP library
+httpx>=0.25.0                      # Async HTTP client
 
-# Development and testing
-pytest>=7.4.0
-pytest-asyncio>=0.21.0
-black>=23.0.0
-isort>=5.12.0
+# ============================================================================
+# Data Processing (Latest Compatible Versions)
+# ============================================================================
+pandas>=2.1.0,<2.3.0              # Latest pandas with performance improvements
+numpy>=1.24.0,<1.27.0             # Latest numpy with Python 3.11+ support
+python-dateutil>=2.8.2             # Date utilities
 
-# Optional: Redis for session storage
-redis>=5.0.0
+# ============================================================================
+# Environment and Configuration
+# ============================================================================
+python-dotenv>=1.0.0               # Environment variable loading
+pydantic>=2.5.0,<3.0.0            # Data validation with modern features
+PyYAML>=6.0                        # YAML processing
+tenacity>=8.2.0                    # Retry mechanisms
+typing-extensions>=4.8.0           # Extended typing support
 
-# Optional: Data visualization helpers
-matplotlib>=3.7.0
-plotly>=5.17.0
+# ============================================================================
+# JSON and Data Serialization
+# ============================================================================
+orjson>=3.9.0                      # Fast JSON serialization
+jsonpatch>=1.33                    # JSON patch operations
+
+# ============================================================================
+# Development and Testing
+# ============================================================================
+pytest>=7.4.0                      # Testing framework
+pytest-asyncio>=0.21.0             # Async testing support
+black>=23.0.0                      # Code formatting
+isort>=5.12.0                      # Import sorting
+watchdog>=3.0.0                    # File system monitoring for hot reload
+
+# ============================================================================
+# Optional: Session Storage and Caching
+# ============================================================================
+redis>=5.0.0                       # Redis client for caching/sessions
+
+# ============================================================================
+# Optional: Data Visualization
+# ============================================================================
+matplotlib>=3.7.0                  # Plotting library
+plotly>=5.17.0                     # Interactive plots

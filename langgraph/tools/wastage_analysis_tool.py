@@ -63,14 +63,14 @@ def get_wastage_summary(
         start_date = end_date - timedelta(days=days_back)
         
         # Get wastage summary from API
-        params = {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        }
+        # Use simple date format (YYYY-MM-DD) instead of full ISO format to avoid API encoding issues
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
         
-        wastage_summary = make_api_call(f"/api/v1/wastage/summary?start_date={start_date.isoformat()}&end_date={end_date.isoformat()}")
+        wastage_summary = make_api_call(f"/api/v1/wastage/summary?start_date={start_date_str}&end_date={end_date_str}")
         
-        if wastage_summary.get("error"):
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(wastage_summary, dict) and wastage_summary.get("error"):
             return {
                 "error": True,
                 "message": f"Unable to connect to backend server: {wastage_summary.get('message')}",
@@ -162,19 +162,24 @@ def analyze_wastage_by_product(
         start_date = end_date - timedelta(days=days_back)
         
         # Build API parameters
+        # Use simple date format (YYYY-MM-DD) instead of full ISO format to avoid API encoding issues
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
+        
         params = []
         if product_id:
             params.append(f"product_id={product_id}")
         if reason_filter:
             params.append(f"reason={reason_filter}")
-        params.append(f"start_date={start_date.isoformat()}")
-        params.append(f"end_date={end_date.isoformat()}")
+        params.append(f"start_date={start_date_str}")
+        params.append(f"end_date={end_date_str}")
         params.append(f"limit={limit}")
         
         query_string = "&".join(params)
         wastage_data = make_api_call(f"/api/v1/wastage?{query_string}")
         
-        if wastage_data.get("error"):
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(wastage_data, dict) and wastage_data.get("error"):
             return {
                 "error": True,
                 "message": f"Unable to connect to backend server: {wastage_data.get('message')}",
@@ -194,8 +199,9 @@ def analyze_wastage_by_product(
         for record in wastage_records:
             product_name = record.get("product_name", "Unknown")
             reason = record.get("reason", "unknown")
-            cost = float(record.get("cost", 0))
-            quantity = float(record.get("quantity", 0))
+            # API returns different field names: cost_loss, qty
+            cost = float(record.get("cost_loss", record.get("cost", 0)))
+            quantity = float(record.get("qty", record.get("quantity", 0)))
             
             # Track by product
             if product_name not in product_analysis:
@@ -300,9 +306,13 @@ def track_wastage_trends(
         start_date = end_date - timedelta(days=months_back * 30)  # Approximate months to days
         
         # Get comprehensive wastage data for trend analysis
-        wastage_data = make_api_call(f"/api/v1/wastage?start_date={start_date.isoformat()}&end_date={end_date.isoformat()}&limit=1000")
+        # Use simple date format (YYYY-MM-DD) instead of full ISO format to avoid API encoding issues
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
+        wastage_data = make_api_call(f"/api/v1/wastage?start_date={start_date_str}&end_date={end_date_str}&limit=200")
         
-        if wastage_data.get("error"):
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(wastage_data, dict) and wastage_data.get("error"):
             return {
                 "error": True,
                 "message": f"Unable to connect to backend server: {wastage_data.get('message')}",
@@ -333,7 +343,8 @@ def track_wastage_trends(
                             "reasons": {}
                         }
                     
-                    cost = float(record.get("cost", 0))
+                    # API returns different field names: cost_loss
+                    cost = float(record.get("cost_loss", record.get("cost", 0)))
                     quantity = float(record.get("quantity", 0))
                     reason = record.get("reason", "unknown")
                     
@@ -393,4 +404,636 @@ def track_wastage_trends(
             "error": True,
             "message": f"Wastage trend analysis failed: {str(e)}",
             "tool": "track_wastage_trends"
+        }
+
+@tool
+def get_wastage_trends(
+    date_range: str = "last_30_days",
+    group_by: str = "week"
+) -> Dict[str, Any]:
+    """
+    Real wastage trend analysis from database using actual wastage records.
+    
+    Args:
+        date_range: Time period to analyze (last_7_days, last_30_days, last_90_days)
+        group_by: Grouping level (day, week, month)
+    
+    Returns:
+        Trend analysis based on real wastage data with patterns and insights
+    """
+    
+    try:
+        # Calculate date range
+        end_date = datetime.now()
+        if date_range == "last_7_days":
+            start_date = end_date - timedelta(days=7)
+        elif date_range == "last_30_days":
+            start_date = end_date - timedelta(days=30)
+        elif date_range == "last_90_days":
+            start_date = end_date - timedelta(days=90)
+        else:
+            start_date = end_date - timedelta(days=30)  # Default
+            
+        # Fetch real wastage data
+        # Use simple date format (YYYY-MM-DD) instead of full ISO format to avoid API encoding issues
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
+        
+        params = {
+            "start_date": start_date_str,
+            "end_date": end_date_str,
+            "limit": 200  # Get comprehensive data for trend analysis
+        }
+        
+        query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+        wastage_data = make_api_call(f"/api/v1/wastage?{query_string}")
+        
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(wastage_data, dict) and wastage_data.get("error"):
+            return {
+                "error": True,
+                "message": f"Unable to fetch wastage data: {wastage_data.get('message')}",
+                "endpoint": "/api/v1/wastage"
+            }
+        
+        # Process wastage records for trend analysis
+        wastage_records = wastage_data if isinstance(wastage_data, list) else wastage_data.get("records", [])
+        
+        # Group data by time period
+        time_groups = {}
+        reason_trends = {}
+        cost_trends = {}
+        
+        for record in wastage_records:
+            recorded_date = record.get("recorded_at", record.get("created_at", ""))
+            if recorded_date:
+                try:
+                    date_obj = datetime.fromisoformat(recorded_date.replace('Z', '+00:00'))
+                    
+                    # Create time grouping key
+                    if group_by == "day":
+                        time_key = date_obj.strftime("%Y-%m-%d")
+                    elif group_by == "week":
+                        # Get week start (Monday)
+                        week_start = date_obj - timedelta(days=date_obj.weekday())
+                        time_key = week_start.strftime("%Y-%m-%d") + " (Week)"
+                    else:  # month
+                        time_key = date_obj.strftime("%Y-%m")
+                    
+                    # Initialize time group
+                    if time_key not in time_groups:
+                        time_groups[time_key] = {
+                            "total_cost": 0,
+                            "total_quantity": 0,
+                            "incident_count": 0,
+                            "reasons": {},
+                            "products": {}
+                        }
+                    
+                    # Aggregate data
+                    # API returns different field names: cost_loss
+                    cost = float(record.get("cost_loss", record.get("cost", 0)))
+                    quantity = float(record.get("quantity", 0))
+                    reason = record.get("reason", "unknown")
+                    product_name = record.get("product_name", "Unknown")
+                    
+                    time_groups[time_key]["total_cost"] += cost
+                    time_groups[time_key]["total_quantity"] += quantity
+                    time_groups[time_key]["incident_count"] += 1
+                    
+                    # Track reasons
+                    if reason not in time_groups[time_key]["reasons"]:
+                        time_groups[time_key]["reasons"][reason] = 0
+                    time_groups[time_key]["reasons"][reason] += 1
+                    
+                    # Track products
+                    if product_name not in time_groups[time_key]["products"]:
+                        time_groups[time_key]["products"][product_name] = 0
+                    time_groups[time_key]["products"][product_name] += cost
+                    
+                    # Overall reason trends
+                    if reason not in reason_trends:
+                        reason_trends[reason] = []
+                    reason_trends[reason].append({"date": time_key, "cost": cost})
+                    
+                except (ValueError, AttributeError):
+                    continue
+        
+        # Calculate trend direction
+        sorted_time_keys = sorted(time_groups.keys())
+        if len(sorted_time_keys) >= 2:
+            recent_period = sorted_time_keys[-1]
+            earlier_period = sorted_time_keys[0]
+            recent_cost = time_groups[recent_period]["total_cost"]
+            earlier_cost = time_groups[earlier_period]["total_cost"]
+            
+            if recent_cost > earlier_cost * 1.1:
+                trend_direction = "Increasing"
+            elif recent_cost < earlier_cost * 0.9:
+                trend_direction = "Decreasing"
+            else:
+                trend_direction = "Stable"
+                
+            trend_percentage = ((recent_cost - earlier_cost) / earlier_cost * 100) if earlier_cost > 0 else 0
+        else:
+            trend_direction = "Insufficient data"
+            trend_percentage = 0
+        
+        # Peak and low periods
+        if time_groups:
+            peak_period = max(time_groups.items(), key=lambda x: x[1]["total_cost"])
+            low_period = min(time_groups.items(), key=lambda x: x[1]["total_cost"])
+        else:
+            peak_period = ("N/A", {"total_cost": 0})
+            low_period = ("N/A", {"total_cost": 0})
+        
+        # Top reasons across all periods
+        overall_reasons = {}
+        for group in time_groups.values():
+            for reason, count in group["reasons"].items():
+                overall_reasons[reason] = overall_reasons.get(reason, 0) + count
+        
+        top_reasons = sorted(overall_reasons.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        trends_result = {
+            "analysis_period": {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "date_range": date_range,
+                "group_by": group_by,
+                "total_periods": len(time_groups)
+            },
+            "overall_trends": {
+                "trend_direction": trend_direction,
+                "trend_percentage": round(trend_percentage, 2),
+                "total_wastage_cost": sum(group["total_cost"] for group in time_groups.values()),
+                "total_incidents": sum(group["incident_count"] for group in time_groups.values()),
+                "average_cost_per_period": round(sum(group["total_cost"] for group in time_groups.values()) / len(time_groups), 2) if time_groups else 0
+            },
+            "period_breakdown": {
+                time_key: {
+                    "total_cost": round(data["total_cost"], 2),
+                    "incident_count": data["incident_count"],
+                    "top_reason": max(data["reasons"].items(), key=lambda x: x[1])[0] if data["reasons"] else "unknown",
+                    "top_product": max(data["products"].items(), key=lambda x: x[1])[0] if data["products"] else "unknown"
+                }
+                for time_key, data in sorted(time_groups.items())
+            },
+            "peak_analysis": {
+                "highest_cost_period": peak_period[0],
+                "highest_cost_amount": round(peak_period[1]["total_cost"], 2),
+                "lowest_cost_period": low_period[0],
+                "lowest_cost_amount": round(low_period[1]["total_cost"], 2)
+            },
+            "reason_analysis": {
+                "top_reasons": [{"reason": reason, "occurrences": count} for reason, count in top_reasons],
+                "reason_trends": "Detailed reason trending available in period breakdown"
+            },
+            "insights": []
+        }
+        
+        # Add insights based on trend analysis
+        if trend_direction == "Increasing":
+            trends_result["insights"].append(f"Wastage costs increasing by {abs(trend_percentage):.1f}% - requires immediate attention")
+        elif trend_direction == "Decreasing":
+            trends_result["insights"].append(f"Positive trend: wastage costs decreasing by {abs(trend_percentage):.1f}%")
+        
+        if peak_period[1]["total_cost"] > low_period[1]["total_cost"] * 2:
+            trends_result["insights"].append("High variance in wastage costs - investigate peak periods")
+        
+        if top_reasons and top_reasons[0][1] > sum(count for _, count in top_reasons[1:]):
+            trends_result["insights"].append(f"Primary wastage reason: {top_reasons[0][0]} - focus intervention here")
+            
+        return {
+            "success": True,
+            "trends": trends_result,
+            "data_source": f"Real wastage trends from /api/v1/wastage ({len(wastage_records)} records)",
+            "confidence": "High - Based on actual wastage events",
+            "source_endpoints": ["/api/v1/wastage"],
+            "calculation_method": f"Time-series analysis grouped by {group_by} from real wastage data",
+            "data_freshness": "Real-time",
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "error": True,
+            "message": f"Wastage trends analysis failed: {str(e)}",
+            "tool": "get_wastage_trends"
+        }
+
+@tool
+def get_top_wastage_products(
+    limit: int = 10,
+    date_range: str = "last_30_days"
+) -> Dict[str, Any]:
+    """
+    Top wastage products from live data ranked by actual wastage costs.
+    
+    Args:
+        limit: Number of top products to return
+        date_range: Time period for analysis
+    
+    Returns:
+        Product rankings based on real wastage data with cost and frequency analysis
+    """
+    
+    try:
+        # Calculate date range
+        end_date = datetime.now()
+        if date_range == "last_7_days":
+            start_date = end_date - timedelta(days=7)
+        elif date_range == "last_30_days":
+            start_date = end_date - timedelta(days=30)
+        elif date_range == "last_90_days":
+            start_date = end_date - timedelta(days=90)
+        else:
+            start_date = end_date - timedelta(days=30)
+            
+        # Fetch wastage data
+        # Use simple date format (YYYY-MM-DD) instead of full ISO format to avoid API encoding issues
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
+        
+        params = {
+            "start_date": start_date_str,
+            "end_date": end_date_str,
+            "limit": 200
+        }
+        
+        query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+        wastage_data = make_api_call(f"/api/v1/wastage?{query_string}")
+        
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(wastage_data, dict) and wastage_data.get("error"):
+            return {
+                "error": True,
+                "message": f"Unable to fetch wastage data: {wastage_data.get('message')}",
+                "endpoint": "/api/v1/wastage"
+            }
+        
+        wastage_records = wastage_data if isinstance(wastage_data, list) else wastage_data.get("records", [])
+        
+        # Aggregate by product
+        product_wastage = {}
+        
+        for record in wastage_records:
+            # API returns different field names: cost_loss, qty, inventory_id
+            product_name = record.get("product_name", record.get("inventory_id", "Unknown Product"))
+            cost = float(record.get("cost_loss", record.get("cost", 0)))
+            quantity = float(record.get("qty", record.get("quantity", 0)))
+            reason = record.get("reason", "unknown")
+            
+            if product_name not in product_wastage:
+                product_wastage[product_name] = {
+                    "total_cost": 0,
+                    "total_quantity": 0,
+                    "incident_count": 0,
+                    "reasons": {},
+                    "dates": []
+                }
+            
+            product_wastage[product_name]["total_cost"] += cost
+            product_wastage[product_name]["total_quantity"] += quantity
+            product_wastage[product_name]["incident_count"] += 1
+            
+            # Track reasons
+            if reason not in product_wastage[product_name]["reasons"]:
+                product_wastage[product_name]["reasons"][reason] = 0
+            product_wastage[product_name]["reasons"][reason] += 1
+            
+            # Track dates for frequency analysis
+            recorded_date = record.get("recorded_at", record.get("created_at", ""))
+            if recorded_date:
+                product_wastage[product_name]["dates"].append(recorded_date)
+        
+        # Calculate additional metrics and rank products
+        ranked_products = []
+        
+        for product_name, data in product_wastage.items():
+            # Calculate average cost per incident
+            avg_cost_per_incident = data["total_cost"] / data["incident_count"] if data["incident_count"] > 0 else 0
+            
+            # Most common reason
+            top_reason = max(data["reasons"].items(), key=lambda x: x[1])[0] if data["reasons"] else "unknown"
+            
+            # Frequency analysis
+            if data["dates"]:
+                # Calculate days between incidents
+                sorted_dates = sorted(data["dates"])
+                if len(sorted_dates) > 1:
+                    try:
+                        first_date = datetime.fromisoformat(sorted_dates[0].replace('Z', '+00:00'))
+                        last_date = datetime.fromisoformat(sorted_dates[-1].replace('Z', '+00:00'))
+                        days_span = (last_date - first_date).days
+                        frequency = data["incident_count"] / max(days_span, 1)  # incidents per day
+                    except (ValueError, AttributeError):
+                        frequency = 0
+                else:
+                    frequency = 0
+            else:
+                frequency = 0
+            
+            # Create product analysis
+            product_analysis = {
+                "product_name": product_name,
+                "total_cost": round(data["total_cost"], 2),
+                "total_quantity": round(data["total_quantity"], 2),
+                "incident_count": data["incident_count"],
+                "average_cost_per_incident": round(avg_cost_per_incident, 2),
+                "primary_reason": top_reason,
+                "frequency_per_day": round(frequency, 3),
+                "cost_rank": 0,  # Will be set after sorting
+                "reasons_breakdown": dict(data["reasons"]),
+                "severity": "High" if data["total_cost"] > 100 else "Medium" if data["total_cost"] > 50 else "Low"
+            }
+            
+            ranked_products.append(product_analysis)
+        
+        # Sort by total cost and assign ranks
+        ranked_products.sort(key=lambda x: x["total_cost"], reverse=True)
+        for i, product in enumerate(ranked_products[:limit]):
+            product["cost_rank"] = i + 1
+        
+        # Calculate summary statistics
+        total_products_analyzed = len(product_wastage)
+        total_cost_all_products = sum(p["total_cost"] for p in ranked_products)
+        top_products_subset = ranked_products[:limit]
+        top_products_cost = sum(p["total_cost"] for p in top_products_subset)
+        
+        # Identify patterns
+        high_frequency_products = [p for p in top_products_subset if p["frequency_per_day"] > 0.1]
+        high_cost_products = [p for p in top_products_subset if p["total_cost"] > 100]
+        
+        # Reason analysis across top products
+        reason_summary = {}
+        for product in top_products_subset:
+            for reason, count in product["reasons_breakdown"].items():
+                reason_summary[reason] = reason_summary.get(reason, 0) + count
+        
+        top_reasons = sorted(reason_summary.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        result = {
+            "analysis_summary": {
+                "total_products_with_wastage": total_products_analyzed,
+                "analysis_period": f"{date_range} ({start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})",
+                "total_wastage_cost": round(total_cost_all_products, 2),
+                "top_products_count": len(top_products_subset),
+                "top_products_cost": round(top_products_cost, 2),
+                "top_products_percentage": round((top_products_cost / total_cost_all_products * 100), 2) if total_cost_all_products > 0 else 0
+            },
+            "top_wastage_products": top_products_subset,
+            "insights": {
+                "high_frequency_products": len(high_frequency_products),
+                "high_cost_products": len(high_cost_products),
+                "top_reasons_across_products": [{"reason": reason, "occurrences": count} for reason, count in top_reasons],
+                "patterns": []
+            },
+            "recommendations": []
+        }
+        
+        # Add pattern insights
+        if len(high_frequency_products) > 0:
+            result["insights"]["patterns"].append(f"{len(high_frequency_products)} products have high wastage frequency")
+        
+        if top_products_cost / total_cost_all_products > 0.8:
+            result["insights"]["patterns"].append("Top products account for majority of wastage costs - focus intervention here")
+        
+        # Add recommendations
+        if top_products_subset:
+            worst_product = top_products_subset[0]
+            result["recommendations"].append(f"Priority: Address '{worst_product['product_name']}' - ${worst_product['total_cost']:.2f} in wastage")
+            result["recommendations"].append(f"Focus on '{worst_product['primary_reason']}' issues for top wastage products")
+        
+        if len(high_frequency_products) > 2:
+            result["recommendations"].append("Implement daily monitoring for high-frequency wastage products")
+        
+        if top_reasons and top_reasons[0][1] > 5:
+            result["recommendations"].append(f"Address root cause: '{top_reasons[0][0]}' is the primary wastage reason")
+            
+        return {
+            "success": True,
+            "wastage_analysis": result,
+            "data_source": f"Real product wastage from /api/v1/wastage ({len(wastage_records)} records)",
+            "confidence": "High - Ranked by actual wastage costs",
+            "source_endpoints": ["/api/v1/wastage"],
+            "calculation_method": "Product aggregation and ranking from real wastage events",
+            "data_freshness": "Real-time",
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "error": True,
+            "message": f"Top wastage products analysis failed: {str(e)}",
+            "tool": "get_top_wastage_products"
+        }
+
+@tool
+def get_wastage_by_date(date: str) -> Dict[str, Any]:
+    """
+    Date-specific wastage analysis using real data from wastage records.
+    
+    Args:
+        date: Specific date to analyze (YYYY-MM-DD format)
+    
+    Returns:
+        Detailed wastage analysis for the specified date with comparisons
+    """
+    
+    try:
+        # Parse the target date
+        try:
+            target_date = datetime.fromisoformat(date)
+        except ValueError:
+            try:
+                target_date = datetime.strptime(date, "%Y-%m-%d")
+            except ValueError:
+                return {
+                    "error": True,
+                    "message": f"Invalid date format: {date}. Use YYYY-MM-DD format",
+                    "tool": "get_wastage_by_date"
+                }
+        
+        # Set date range for the specific day
+        start_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=1)
+        
+        # Fetch wastage data for the specific date
+        # Use simple date format (YYYY-MM-DD) instead of full ISO format to avoid API encoding issues
+        start_date_str = start_date.strftime("%Y-%m-%d")
+        end_date_str = end_date.strftime("%Y-%m-%d")
+        
+        params = {
+            "start_date": start_date_str,
+            "end_date": end_date_str,
+            "limit": 200
+        }
+        
+        query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+        wastage_data = make_api_call(f"/api/v1/wastage?{query_string}")
+        
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(wastage_data, dict) and wastage_data.get("error"):
+            return {
+                "error": True,
+                "message": f"Unable to fetch wastage data: {wastage_data.get('message')}",
+                "endpoint": "/api/v1/wastage"
+            }
+        
+        wastage_records = wastage_data if isinstance(wastage_data, list) else wastage_data.get("records", [])
+        
+        # Also get data for comparison (previous 7 days)
+        comparison_start = start_date - timedelta(days=7)
+        comparison_end = start_date
+        
+        # Use simple date format (YYYY-MM-DD) instead of full ISO format to avoid API encoding issues
+        comparison_start_str = comparison_start.strftime("%Y-%m-%d")
+        comparison_end_str = comparison_end.strftime("%Y-%m-%d")
+        
+        comparison_params = {
+            "start_date": comparison_start_str,
+            "end_date": comparison_end_str,
+            "limit": 200
+        }
+        
+        comparison_query = "&".join([f"{k}={v}" for k, v in comparison_params.items()])
+        comparison_data = make_api_call(f"/api/v1/wastage?{comparison_query}")
+        
+        comparison_records = []
+        if not comparison_data.get("error"):
+            comparison_records = comparison_data if isinstance(comparison_data, list) else comparison_data.get("records", [])
+        
+        # Analyze target date wastage
+        total_cost = 0
+        total_quantity = 0
+        incidents_count = len(wastage_records)
+        reasons_breakdown = {}
+        products_breakdown = {}
+        hourly_breakdown = {}
+        
+        for record in wastage_records:
+            # API returns different field names: cost_loss, qty
+            cost = float(record.get("cost_loss", record.get("cost", 0)))
+            quantity = float(record.get("qty", record.get("quantity", 0)))
+            reason = record.get("reason", "unknown")
+            product_name = record.get("product_name", "Unknown")
+            recorded_time = record.get("recorded_at", record.get("created_at", ""))
+            
+            total_cost += cost
+            total_quantity += quantity
+            
+            # Reason breakdown
+            reasons_breakdown[reason] = reasons_breakdown.get(reason, 0) + 1
+            
+            # Product breakdown
+            if product_name not in products_breakdown:
+                products_breakdown[product_name] = {"cost": 0, "quantity": 0, "count": 0}
+            products_breakdown[product_name]["cost"] += cost
+            products_breakdown[product_name]["quantity"] += quantity
+            products_breakdown[product_name]["count"] += 1
+            
+            # Hourly breakdown
+            if recorded_time:
+                try:
+                    time_obj = datetime.fromisoformat(recorded_time.replace('Z', '+00:00'))
+                    hour = time_obj.hour
+                    hourly_breakdown[hour] = hourly_breakdown.get(hour, 0) + cost
+                except (ValueError, AttributeError):
+                    pass
+        
+        # Calculate comparison metrics
+        comparison_total_cost = sum(float(r.get("cost", 0)) for r in comparison_records)
+        comparison_incidents = len(comparison_records)
+        comparison_avg_daily_cost = comparison_total_cost / 7 if comparison_records else 0
+        comparison_avg_daily_incidents = comparison_incidents / 7 if comparison_records else 0
+        
+        # Performance vs average
+        cost_vs_average = ((total_cost - comparison_avg_daily_cost) / comparison_avg_daily_cost * 100) if comparison_avg_daily_cost > 0 else 0
+        incidents_vs_average = ((incidents_count - comparison_avg_daily_incidents) / comparison_avg_daily_incidents * 100) if comparison_avg_daily_incidents > 0 else 0
+        
+        # Top products and reasons
+        top_products = sorted(products_breakdown.items(), key=lambda x: x[1]["cost"], reverse=True)[:5]
+        top_reasons = sorted(reasons_breakdown.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        # Peak hour analysis
+        peak_hour = max(hourly_breakdown.items(), key=lambda x: x[1])[0] if hourly_breakdown else None
+        peak_hour_cost = hourly_breakdown.get(peak_hour, 0) if peak_hour is not None else 0
+        
+        date_analysis = {
+            "target_date": date,
+            "daily_summary": {
+                "total_cost": round(total_cost, 2),
+                "total_quantity": round(total_quantity, 2),
+                "incidents_count": incidents_count,
+                "average_cost_per_incident": round(total_cost / incidents_count, 2) if incidents_count > 0 else 0
+            },
+            "comparison_with_recent_average": {
+                "previous_7_days_avg_cost": round(comparison_avg_daily_cost, 2),
+                "previous_7_days_avg_incidents": round(comparison_avg_daily_incidents, 2),
+                "cost_variance_percentage": round(cost_vs_average, 2),
+                "incidents_variance_percentage": round(incidents_vs_average, 2),
+                "performance": "Above average" if cost_vs_average > 10 else "Below average" if cost_vs_average < -10 else "Normal"
+            },
+            "breakdown_analysis": {
+                "top_products": [
+                    {
+                        "product": product,
+                        "cost": round(data["cost"], 2),
+                        "incidents": data["count"],
+                        "percentage_of_daily_cost": round((data["cost"] / total_cost * 100), 2) if total_cost > 0 else 0
+                    }
+                    for product, data in top_products
+                ],
+                "top_reasons": [
+                    {
+                        "reason": reason,
+                        "incidents": count,
+                        "percentage": round((count / incidents_count * 100), 2) if incidents_count > 0 else 0
+                    }
+                    for reason, count in top_reasons
+                ]
+            },
+            "time_analysis": {
+                "peak_hour": peak_hour,
+                "peak_hour_cost": round(peak_hour_cost, 2) if peak_hour_cost else 0,
+                "hourly_distribution": {str(hour): round(cost, 2) for hour, cost in sorted(hourly_breakdown.items())}
+            },
+            "insights": []
+        }
+        
+        # Add insights based on analysis
+        if cost_vs_average > 50:
+            date_analysis["insights"].append("Significantly high wastage cost compared to recent average")
+        elif cost_vs_average < -30:
+            date_analysis["insights"].append("Lower than average wastage - good performance day")
+        
+        if incidents_count > comparison_avg_daily_incidents * 2:
+            date_analysis["insights"].append("High number of wastage incidents - potential operational issues")
+        
+        if peak_hour is not None:
+            if 11 <= peak_hour <= 14:
+                date_analysis["insights"].append("Peak wastage during lunch hours - review food preparation")
+            elif 18 <= peak_hour <= 21:
+                date_analysis["insights"].append("Peak wastage during dinner hours - review portion control")
+        
+        if top_products and top_products[0][1]["cost"] / total_cost > 0.5:
+            date_analysis["insights"].append(f"Single product '{top_products[0][0]}' accounts for majority of wastage")
+            
+        return {
+            "success": True,
+            "date_analysis": date_analysis,
+            "data_source": f"Real wastage data from /api/v1/wastage for {date} ({len(wastage_records)} records)",
+            "confidence": "High - Actual daily wastage data",
+            "source_endpoints": ["/api/v1/wastage"],
+            "calculation_method": "Daily aggregation with 7-day average comparison",
+            "data_freshness": "Real-time",
+            "generated_at": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        return {
+            "error": True,
+            "message": f"Date-specific wastage analysis failed: {str(e)}",
+            "tool": "get_wastage_by_date"
         }

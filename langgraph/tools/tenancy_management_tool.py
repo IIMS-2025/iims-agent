@@ -60,7 +60,8 @@ def get_tenant_information(
         # Get all tenants
         tenants_data = make_api_call("/api/v1/tenancy/tenants")
         
-        if tenants_data.get("error"):
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(tenants_data, dict) and tenants_data.get("error"):
             return {
                 "error": True,
                 "message": f"Unable to connect to backend server: {tenants_data.get('message')}",
@@ -90,7 +91,8 @@ def get_tenant_information(
             # Add location information if requested
             if include_locations:
                 locations_data = make_api_call(f"/api/v1/tenancy/locations?tenant_id={tenant.get('id')}")
-                if not locations_data.get("error"):
+                # Check if locations API returned an error (only if it's a dict)
+                if not (isinstance(locations_data, dict) and locations_data.get("error")):
                     locations = locations_data if isinstance(locations_data, list) else [locations_data]
                     tenant_info["locations"] = [
                         {
@@ -112,7 +114,8 @@ def get_tenant_information(
             # Add product summary if requested
             if include_products_summary:
                 products_data = make_api_call(f"/api/v1/tenancy/products?tenant_id={tenant.get('id')}")
-                if not products_data.get("error"):
+                # Check if products API returned an error (only if it's a dict)
+                if not (isinstance(products_data, dict) and products_data.get("error")):
                     products = products_data if isinstance(products_data, list) else [products_data]
                     
                     # Analyze product catalog
@@ -198,7 +201,8 @@ def analyze_product_catalog(
         
         products_data = make_api_call(endpoint)
         
-        if products_data.get("error"):
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(products_data, dict) and products_data.get("error"):
             return {
                 "error": True,
                 "message": f"Unable to connect to backend server: {products_data.get('message')}",
@@ -341,7 +345,8 @@ def get_location_overview(
         endpoint = f"/api/v1/tenancy/locations?tenant_id={tenant_id}" if tenant_id else "/api/v1/tenancy/locations"
         locations_data = make_api_call(endpoint)
         
-        if locations_data.get("error"):
+        # Check if API call returned an error (only if it's a dict)
+        if isinstance(locations_data, dict) and locations_data.get("error"):
             return {
                 "error": True,
                 "message": f"Unable to connect to backend server: {locations_data.get('message')}",
