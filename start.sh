@@ -31,6 +31,25 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Load nvm and use correct Node version
+load_nvm() {
+    print_status "Loading NVM and setting Node.js version..."
+    if [ -s "$HOME/.nvm/nvm.sh" ]; then
+        source "$HOME/.nvm/nvm.sh"
+        nvm use 18 > /dev/null 2>&1 || {
+            print_warning "Node.js 18 not found, installing..."
+            nvm install 18
+            nvm use 18
+        }
+        print_success "Using Node.js $(node --version)"
+    else
+        print_warning "NVM not found, using system Node.js $(node --version)"
+    fi
+}
+
+# Load NVM and set correct Node.js version
+load_nvm
+
 # Check if virtual environment exists and validate Python version
 if [ ! -d "venv" ]; then
     print_error "Virtual environment not found!"
